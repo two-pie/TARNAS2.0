@@ -1,5 +1,6 @@
 package it.unicam.cs.bdslab.tarnas.view;
 
+import it.unicam.cs.bdslab.tarnas.controller.DockerController;
 import it.unicam.cs.bdslab.tarnas.controller.IOController;
 import javafx.fxml.FXML;
 import javafx.scene.control.TextField;
@@ -13,9 +14,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.awt.*;
-import java.io.IOException;
 import java.net.URI;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.logging.Logger;
 
@@ -23,18 +22,19 @@ import java.util.logging.Logger;
 public class HomeController {
     public static final Logger logger = Logger.getLogger("it.unicam.cs.bdslab.tarnas.view.HomeController");
 
-    private final String dockerImage = "tarnas2.0";
+    private final String dockerImageName = "tarnas2.0";
 
     private IOController ioController;
+    private DockerController dockerController;
 
     @FXML
     private TableView<Path> filesTable;
 
     @FXML
-    private TableColumn<Path,String> nameColumn;
+    private TableColumn<Path, String> nameColumn;
 
     @FXML
-    private TableColumn<Path,Void> deleteColumn;
+    private TableColumn<Path, Void> deleteColumn;
 
     @FXML
     public MenuButton btnSelectFormatTranslation;
@@ -50,11 +50,13 @@ public class HomeController {
 
     @FXML
     public BorderPane abstractionsPane;
+    ;
 
     @FXML
     public void initialize() {
         logger.info("Initializing...");
         this.ioController = IOController.getInstance();
+        this.dockerController = DockerController.getInstance();
         logger.info("Initialization done");
     }
 
@@ -74,66 +76,14 @@ public class HomeController {
             try {
                 var sharedDirectory = selectedDirectory.toPath();
                 this.ioController.loadDirectory(sharedDirectory);
-                Path outputDir = selectedDirectory.toPath().resolve("output");
-                Files.createDirectories(outputDir);
-                docker(sharedDirectory);
+                this.dockerController.init(this.dockerImageName, sharedDirectory);
+                this.dockerController.rnaView();
                 logger.info("Folder added successfully");
             } catch (Exception e) {
                 showAlert(Alert.AlertType.ERROR, "", "", e.getMessage());
             }
         }
         logger.info("Exit add file");
-    }
-
-    private void docker(Path p) throws IOException, InterruptedException {
-        // 1. Run container detached with volume mounted
-        ProcessBuilder runPb = new ProcessBuilder(
-                "docker", "run", "-d", "-v",
-                p.toAbsolutePath() + ":/data",
-                "--name", this.dockerImage,
-                "tarnas2.0",
-                "tail", "-f", "/dev/null"
-        );
-        runPb.inheritIO();
-        Process runProcess = runPb.start();
-        int runExitCode = runProcess.waitFor();
-        if (runExitCode != 0) {
-            throw new RuntimeException("Docker run failed with code: " + runExitCode);
-        }
-
-        try {
-            // 2. Exec shell command with loop inside container
-            String shellCmd = "bash -c '" +
-                    "cd /home/RNAView/bin && " +
-                    "for file in /data/*.pdb; do " +
-                    "filename=$(basename \"$file\"); " +
-                    "./rnaview \"$file\" && " +
-                    "mv /data/\"${filename}\"* /data/output/ && " +
-                    "mv /data/output/\"${filename}\" /data/; " +
-                    "done'";
-
-            ProcessBuilder execPb = new ProcessBuilder(
-                    "docker", "exec", this.dockerImage, "bash", "-c", shellCmd
-            );
-            execPb.inheritIO();
-            Process execProcess = execPb.start();
-            int execExitCode = execProcess.waitFor();
-            if (execExitCode != 0) {
-                throw new RuntimeException("Docker exec script failed with code: " + execExitCode);
-            }
-
-            System.out.println("Docker container processed all pdb files and moved outputs");
-
-        } finally {
-            // 3. Cleanup container
-            ProcessBuilder rmPb = new ProcessBuilder(
-                    "docker", "rm", "-f", this.dockerImage
-            );
-            rmPb.inheritIO();
-            Process rmProcess = rmPb.start();
-            rmProcess.waitFor();
-            System.out.println("Container " + this.dockerImage + " removed");
-        }
     }
 
 

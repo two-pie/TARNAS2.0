@@ -31,7 +31,6 @@ public class IOController {
      */
     public void loadDirectory(Path p) throws IOException {
         this.sharedDirectory = p;
-
     }
 
     public Path getSharedDirectory() {
