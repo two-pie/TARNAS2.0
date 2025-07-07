@@ -8,6 +8,7 @@ import com.github.dockerjava.api.model.*;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.core.command.ExecStartResultCallback;
+
 import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
@@ -29,7 +30,7 @@ public class DockerController {
         dockerClient = DockerClientBuilder.getInstance(config).build();
     }
 
-    public void init(String imageName, Path sharedFolder) {
+    public void init(String imageName, String imageTag, Path sharedFolder) {
 
         // Define paths and tags
         File dockerContext = new File("./docker");  // Make sure this contains the Dockerfile
@@ -38,13 +39,15 @@ public class DockerController {
         List<Image> images = dockerClient.listImagesCmd().exec();
         boolean imageExists = false;
         for (Image image : images) {
-            String[] tags = image.getRepoTags();
-            if (tags != null) {
-                for (String tag : tags) {
-                    if (imageName.equals(tag)) {
-                        imageExists = true;
-                        logger.info("Image found with ID: " + image.getId());
-                        break;
+            if (!imageExists) {
+                String[] tags = image.getRepoTags();
+                if (tags != null) {
+                    for (String tag : tags) {
+                        if ((imageName + ":" + imageTag).equals(tag)) {
+                            imageExists = true;
+                            logger.info("Image found with ID: " + image.getId());
+                            break;
+                        }
                     }
                 }
             }
@@ -63,7 +66,7 @@ public class DockerController {
         HostConfig hostConfig = HostConfig.newHostConfig()
                 .withAutoRemove(true)
                 .withBinds(new Bind(hostSharedFolder, new Volume(containerSharedFolder)) // ./shared → /data
-        );
+                );
 
 
         container = dockerClient.createContainerCmd(imageName).withName("tarnas2.0-container").withHostConfig(hostConfig).exec();
@@ -106,7 +109,7 @@ public class DockerController {
         dockerClient.execStartCmd(execCreateCmdResponse.getId()).exec(new ExecStartResultCallback(System.out, System.err)).awaitCompletion();
     }
 
-    public void baRNAba(Path sharedFolder){
+    public void baRNAba(Path sharedFolder) {
         // TODO
     }
 

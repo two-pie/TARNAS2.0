@@ -23,6 +23,7 @@ public class HomeController {
     public static final Logger logger = Logger.getLogger("it.unicam.cs.bdslab.tarnas.view.HomeController");
 
     private final String dockerImageName = "tarnas2.0";
+    private final String dockerImageTag = "latest";
 
     private IOController ioController;
     private DockerController dockerController;
@@ -76,7 +77,7 @@ public class HomeController {
             try {
                 var sharedDirectory = selectedDirectory.toPath();
                 this.ioController.loadDirectory(sharedDirectory);
-                this.dockerController.init(this.dockerImageName, sharedDirectory);
+                this.dockerController.init(this.dockerImageName, this.dockerImageTag, sharedDirectory);
                 this.dockerController.rnaView();
                 logger.info("Folder added successfully");
             } catch (Exception e) {
