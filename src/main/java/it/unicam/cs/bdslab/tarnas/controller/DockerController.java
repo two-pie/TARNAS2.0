@@ -88,13 +88,27 @@ public class DockerController {
                 }).awaitCompletion();*/
     }
 
+    public void bindHostAndContainer() {
+        // TODO: capire se si possono fare diversi bind in diversi momenti nello stesso container
+        // TODO: capire se smontare la shared folder oppure no
+
+        // se si fa questo metodo, verrà richiamato ogni volta dentro addFolder
+    }
+
+    public boolean isContainerRunning() {
+        return this.container != null && this.dockerClient.inspectContainerCmd(container.getId())
+                .exec()
+                .getState()
+                .getRunning();
+    }
+
     public void stopContainer() {
         dockerClient.stopContainerCmd(container.getId()).exec();
         logger.info("Container finished execution.");
     }
 
     public void rnaView() throws InterruptedException {
-        String shellCommand = "mkdir -p /data/rnaview-output && "
+        String shellCmd = "mkdir -p /data/rnaview-output && "
                 + "cd /home/RNAView/bin && "
                 + "for file in /data/*.pdb; do "
                 + "filename=$(basename \"$file\"); "
@@ -103,14 +117,65 @@ public class DockerController {
                 + "done";
 
         // Create exec command
-        ExecCreateCmdResponse execCreateCmdResponse = dockerClient.execCreateCmd(container.getId()).withAttachStdout(true).withAttachStderr(true).withCmd("bash", "-c", shellCommand).exec();
+        ExecCreateCmdResponse execCreateCmdResponse = dockerClient.execCreateCmd(container.getId()).withAttachStdout(true).withAttachStderr(true).withCmd("bash", "-c", shellCmd).exec();
 
         // Start and attach to output
         dockerClient.execStartCmd(execCreateCmdResponse.getId()).exec(new ExecStartResultCallback(System.out, System.err)).awaitCompletion();
     }
 
-    public void baRNAba(Path sharedFolder) {
-        // TODO
+    public void rnapolisAnnotator() throws InterruptedException {
+        String shellCmd = "mkdir -p /data/rnapolis-output &&" +
+                "for file in /data/*.pdb; do " +
+                "    filename=$(basename \"$file\");" +
+                "    name=\"${filename%.}\";" +
+                "    annotator -b \"/data/rnapolis-output/${name}.bpseq\" \"$file\";" +
+                "done";
+
+        // Create exec command
+        ExecCreateCmdResponse execCreateCmdResponse = dockerClient.execCreateCmd(container.getId()).withAttachStdout(true).withAttachStderr(true).withCmd("bash", "-c", shellCmd).exec();
+
+        // Start and attach to output
+        dockerClient.execStartCmd(execCreateCmdResponse.getId()).exec(new ExecStartResultCallback(System.out, System.err)).awaitCompletion();
+    }
+
+    public void baRNAba() throws InterruptedException {
+        String shellCmd =
+                "mkdir -p /data/barnaba-output && " +
+                        "for file in /data/*.pdb; do " +
+                        "filename=$(basename \"$file\"); " +
+                        "name=\"${filename%.}\"; " +
+                        "./barnaba/bin/barnaba ANNOTATE --pdb \"$file\"; " +
+                        "mv outfile.ANNOTATE.pairing.out \"/data/barnaba-output/${name}.ANNOTATE.pairing.out\"; " +
+                        "mv outfile.ANNOTATE.stacking.out \"/data/barnaba-output/${name}.ANNOTATE.stacking.out\"; " +
+                        "done";
+
+        // Create exec command
+        ExecCreateCmdResponse execCreateCmdResponse = dockerClient.execCreateCmd(container.getId()).withAttachStdout(true).withAttachStderr(true).withCmd("bash", "-c", shellCmd).exec();
+
+        // Start and attach to output
+        dockerClient.execStartCmd(execCreateCmdResponse.getId()).exec(new ExecStartResultCallback(System.out, System.err)).awaitCompletion();
+    }
+
+    public void bpnet() throws InterruptedException {
+        String shellCmd = "mkdir -p /data/bpnet-output && "
+                + "cd /home/bpnet/bin && " +
+                "for file in /data/*.pdb; do " +
+                "  filename=$(basename \"$file\"); " +
+                "  prefix=\"${filename%.*}\"; " +
+                "  ./bpnet.linux \"$file\"; " +
+                "  for output in /data/${prefix}*; do " +
+                "    [ \"$output\" = \"$file\" ] && continue; " +  // skip the input file
+                "    outname=$(basename \"$output\"); " +
+                "    mv \"$output\" \"/data/bpnet-output/${prefix}.$outname\"; " +
+                "  done; " +
+                "done";
+
+
+        // Create exec command
+        ExecCreateCmdResponse execCreateCmdResponse = dockerClient.execCreateCmd(container.getId()).withAttachStdout(true).withAttachStderr(true).withCmd("bash", "-c", shellCmd).exec();
+
+        // Start and attach to output
+        dockerClient.execStartCmd(execCreateCmdResponse.getId()).exec(new ExecStartResultCallback(System.out, System.err)).awaitCompletion();
     }
 
     public static DockerController getInstance() {

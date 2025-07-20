@@ -2,7 +2,9 @@ package it.unicam.cs.bdslab.tarnas.view;
 
 import it.unicam.cs.bdslab.tarnas.controller.DockerController;
 import it.unicam.cs.bdslab.tarnas.controller.IOController;
+import it.unicam.cs.bdslab.tarnas.view.utils.TOOL;
 import javafx.fxml.FXML;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.control.*;
 
@@ -16,6 +18,8 @@ import javafx.stage.Stage;
 import java.awt.*;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
 import java.util.logging.Logger;
 
 
@@ -38,9 +42,6 @@ public class HomeController {
     private TableColumn<Path, Void> deleteColumn;
 
     @FXML
-    public MenuButton btnSelectFormatTranslation;
-
-    @FXML
     public CheckBox chbxSaveAsZIP;
 
     @FXML
@@ -51,13 +52,19 @@ public class HomeController {
 
     @FXML
     public BorderPane abstractionsPane;
-    ;
+
+    @FXML
+    public MenuButton menuBtnTools;
+
+    private TOOL selectedTool;
 
     @FXML
     public void initialize() {
         logger.info("Initializing...");
         this.ioController = IOController.getInstance();
         this.dockerController = DockerController.getInstance();
+
+        this.initSelectEventOnButtonItems(Arrays.stream(TOOL.values()).toList());
         logger.info("Initialization done");
     }
 
@@ -78,7 +85,6 @@ public class HomeController {
                 var sharedDirectory = selectedDirectory.toPath();
                 this.ioController.loadDirectory(sharedDirectory);
                 this.dockerController.init(this.dockerImageName, this.dockerImageTag, sharedDirectory);
-                this.dockerController.rnaView();
                 logger.info("Folder added successfully");
             } catch (Exception e) {
                 showAlert(Alert.AlertType.ERROR, "", "", e.getMessage());
@@ -95,8 +101,14 @@ public class HomeController {
     }
 
     @FXML
-    public void handleRun() {
+    public void handleRun() throws InterruptedException {
         logger.info("RUN button clicked");
+        switch (this.selectedTool) {
+            case RNAPOLIS_ANNOTATOR -> this.dockerController.rnapolisAnnotator();
+            case RNAVIEW -> this.dockerController.rnaView();
+            case BARNABA -> this.dockerController.baRNAba();
+            case BPNET -> this.dockerController.bpnet();
+        }
     }
 
 
@@ -294,4 +306,19 @@ public class HomeController {
         // Show the dialog
         alertDialog.showAndWait();
     }
+
+    private void initSelectEventOnButtonItems(List<TOOL> availableTranslations) {
+        this.menuBtnTools.getItems().clear();
+        availableTranslations.forEach(a -> {
+            var item = new MenuItem(a.getName());
+            item.setUserData(a);
+            this.menuBtnTools.getItems().add(item);
+            item.setOnAction(e -> {
+                this.selectedTool = (TOOL) ((MenuItem) e.getSource()).getUserData();
+                this.menuBtnTools.setText((((MenuItem) e.getSource()).getText())); // set String to display in MenuItem
+                this.menuBtnTools.setUserData(this.selectedTool);
+            });
+        });
+    }
+
 }

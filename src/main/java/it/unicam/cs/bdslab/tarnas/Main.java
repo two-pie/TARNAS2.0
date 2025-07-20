@@ -39,26 +39,29 @@ public class Main extends Application {
             if (result.isEmpty() || result.get() == ButtonType.NO) {
                 event.consume(); // prevents the window from closing
             } else {
-                // Show info alert
-                Alert infoAlert = new Alert(Alert.AlertType.NONE);
-                infoAlert.setTitle("Closing...");
-                infoAlert.setHeaderText(null);
-                infoAlert.setContentText("I am closing the container...");
-                infoAlert.initOwner(stage);
-                infoAlert.initModality(Modality.WINDOW_MODAL);
-                infoAlert.show();
+                boolean shouldStopContainer = DockerController.getInstance().isContainerRunning();
 
-                // Stop container in background thread
-                new Thread(() -> {
-                    DockerController.getInstance().stopContainer();
-                    // Close alert and exit on JavaFX thread
-                    Platform.runLater(() -> {
-                        infoAlert.close();
-                        Platform.exit(); // ensures proper shutdown
-                    });
-                }).start();
+                if (shouldStopContainer) {
+                    Alert infoAlert = new Alert(Alert.AlertType.NONE);
+                    infoAlert.setTitle("Closing...");
+                    infoAlert.setHeaderText(null);
+                    infoAlert.setContentText("Closing the container...");
+                    infoAlert.initOwner(stage);
+                    infoAlert.initModality(Modality.WINDOW_MODAL);
+                    infoAlert.show();
 
-                event.consume(); // prevent immediate window close
+                    new Thread(() -> {
+                        DockerController.getInstance().stopContainer();
+                        Platform.runLater(() -> {
+                            infoAlert.close();
+                            Platform.exit();
+                        });
+                    }).start();
+
+                    event.consume();
+                } else {
+                    Platform.exit(); // just exit immediately
+                }
             }
         });
         stage.show();
