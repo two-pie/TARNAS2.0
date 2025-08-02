@@ -2,10 +2,10 @@ FROM python:3.10-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Set working directory to /home
+# Set working directory
 WORKDIR /home
 
-# Install system dependencies and Python packages
+# Install system dependencies including Ruby first
 RUN apt-get update && apt-get install -y \
     git \
     cmake \
@@ -13,10 +13,11 @@ RUN apt-get update && apt-get install -y \
     bison \
     build-essential \
     python3-dev \
+    ruby \
     && apt-get clean && rm -rf /var/lib/apt/lists/* \
     && pip install --upgrade pip
 
-# Clone tools into /home and install them
+# Clone and install tools
 RUN git clone https://github.com/tzok/rnapolis-py.git && \
     pip install -r rnapolis-py/requirements.txt && \
     pip install ./rnapolis-py && \
@@ -33,6 +34,7 @@ RUN git clone https://github.com/tzok/rnapolis-py.git && \
     cd BeEM && \
     g++ -O3 BeEM.cpp -o BeEM
 
+# Set environment variables
 ENV NUCLEIC_ACID_DIR=/usr/local/bin
 ENV RNAVIEW=/home/RNAView
 

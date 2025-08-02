@@ -93,7 +93,7 @@
         </BorderPane>
     </top>
    <bottom>
-        <BorderPane fx:id="paneTranslationCleaning" prefHeight="349.0" prefWidth="1202.0" BorderPane.alignment="CENTER">
+        <BorderPane fx:id="paneTranslationCleaning" prefHeight="349.0" prefWidth="1202.0" stylesheets="@../css/home.css" BorderPane.alignment="CENTER">
             <left>
                 <BorderPane prefHeight="236.0" prefWidth="443.0" BorderPane.alignment="CENTER" />
             </left>

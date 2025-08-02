@@ -8,7 +8,8 @@ public enum TOOL {
     RNAPOLIS_ANNOTATOR("RNAPOLIS_ANNOTATOR"),
     BARNABA("BARNABA"),
     BPNET("BPNET"),
-    FR3D("FR3D");
+    FR3D("FR3D"),
+    X3DNA("X3DNA");
 
     private final String name;
 

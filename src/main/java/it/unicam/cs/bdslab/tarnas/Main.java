@@ -1,6 +1,7 @@
 package it.unicam.cs.bdslab.tarnas;
 
 import it.unicam.cs.bdslab.tarnas.controller.DockerController;
+import it.unicam.cs.bdslab.tarnas.view.HomeController;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -27,7 +28,7 @@ public class Main extends Application {
     @Override
     public void start(Stage stage) throws IOException, URISyntaxException {
         Parent root = FXMLLoader.load(Objects.requireNonNull(Main.class.getResource("/fxml/home.fxml")));
-        stage.setTitle("TARNAS");
+        stage.setTitle("TARNAS2.0");
         stage.getIcons().add(new Image(String.valueOf(App.class.getResource("/img/tarnas-icon.png").toURI())));
         stage.setScene(new Scene(root));
         stage.setMinWidth(1300);
@@ -52,6 +53,11 @@ public class Main extends Application {
 
                     new Thread(() -> {
                         DockerController.getInstance().stopContainer();
+                        try {
+                            DockerController.getInstance().stopX3DNAContainer();
+                        } catch (IOException | InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
                         Platform.runLater(() -> {
                             infoAlert.close();
                             Platform.exit();

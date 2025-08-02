@@ -16,11 +16,15 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.awt.*;
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
+
+import static it.unicam.cs.bdslab.tarnas.view.utils.TOOL.*;
 
 
 public class HomeController {
@@ -84,7 +88,7 @@ public class HomeController {
             try {
                 var sharedDirectory = selectedDirectory.toPath();
                 this.ioController.loadDirectory(sharedDirectory);
-                this.dockerController.init(this.dockerImageName, this.dockerImageTag, sharedDirectory);
+                this.dockerController.init(this.dockerImageName, this.dockerImageTag, sharedDirectory, this.getPrimaryStage());
                 logger.info("Folder added successfully");
             } catch (Exception e) {
                 showAlert(Alert.AlertType.ERROR, "", "", e.getMessage());
@@ -101,13 +105,64 @@ public class HomeController {
     }
 
     @FXML
-    public void handleRun() throws InterruptedException {
+    public void handleRun() throws InterruptedException, IOException {
         logger.info("RUN button clicked");
-        switch (this.selectedTool) {
-            case RNAPOLIS_ANNOTATOR -> this.dockerController.rnapolisAnnotator();
-            case RNAVIEW -> this.dockerController.rnaView();
-            case BARNABA -> this.dockerController.baRNAba();
-            case BPNET -> this.dockerController.bpnet();
+
+        Map<TOOL, Runnable> toolActions = Map.of(
+                RNAPOLIS_ANNOTATOR, () -> {
+                    try {
+                        this.dockerController.rnapolisAnnotator();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                },
+                RNAVIEW,            () -> {
+                    try {
+                        this.dockerController.rnaView();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                },
+                BARNABA,            () -> {
+                    try {
+                        this.dockerController.baRNAba();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                },
+                BPNET,              () -> {
+                    try {
+                        this.dockerController.bpnet();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                },
+                FR3D,               () -> this.dockerController.fr3d(),
+                X3DNA,              () -> {
+                    try {
+                        this.dockerController.x3dna();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+        );
+
+        Runnable action = toolActions.get(this.selectedTool);
+
+        if (action != null) {
+            action.run();
+            showAlert(
+                    Alert.AlertType.INFORMATION,
+                    this.selectedTool.getName() + " Tool",
+                    "",
+                    "Output saved in " + this.ioController.getSharedDirectory()
+            );
+            logger.info(this.selectedTool.getName().toUpperCase() + " TOOL EXECUTED");
+        } else {
+            showAlert(Alert.AlertType.ERROR, "Tool Error", "", "No action defined for selected tool.");
+            logger.warning("No action defined for tool: " + this.selectedTool);
         }
     }
 
@@ -116,9 +171,9 @@ public class HomeController {
         return (Stage) this.filesTable.getScene().getWindow();
     }
 
-    private void showAlert(Alert.AlertType alertType, String title, String header, String content) {
+    public void showAlert(Alert.AlertType alertType, String title, String header, String content) {
         Alert alert = new Alert(alertType);
-        alert.initOwner(this.getPrimaryStage());
+        alert.initOwner(getPrimaryStage());
         alert.initModality(Modality.APPLICATION_MODAL);
         alert.setTitle(title);
         alert.setHeaderText(header);

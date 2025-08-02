@@ -8,8 +8,15 @@ import com.github.dockerjava.api.model.*;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.core.command.ExecStartResultCallback;
+import it.unicam.cs.bdslab.tarnas.view.HomeController;
+import javafx.scene.control.Alert;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
@@ -21,6 +28,9 @@ public class DockerController {
 
     private static DockerController instance = new DockerController();
 
+    private final String X3DNA_containerName = "x3dna-container";
+    private final String X3DNA_imageName = "x3dna-image";
+
     private CreateContainerResponse container;
     private final DockerClient dockerClient;
 
@@ -30,10 +40,10 @@ public class DockerController {
         dockerClient = DockerClientBuilder.getInstance(config).build();
     }
 
-    public void init(String imageName, String imageTag, Path sharedFolder) {
+    public void init(String imageName, String imageTag, Path sharedFolder, Stage primaryStage) throws IOException, InterruptedException {
 
         // Define paths and tags
-        File dockerContext = new File("./docker");  // Make sure this contains the Dockerfile
+        File dockerContext = new File("./docker/all-tools");  // Make sure this contains the Dockerfile
 
         // Build the image
         List<Image> images = dockerClient.listImagesCmd().exec();
@@ -86,7 +96,77 @@ public class DockerController {
                         System.out.print(new String(frame.getPayload()));
                     }
                 }).awaitCompletion();*/
+
+        this.initX3DNAContainer(sharedFolder);
+
     }
+
+    public void initX3DNAContainer(Path sharedFolder) throws IOException, InterruptedException {
+        File dockerfile = new File("./docker/x3dna-tool/Dockerfile");
+        File contextDir = dockerfile.getParentFile(); // "./docker/x3dna-tool/"
+
+        // Check if the image already exists
+        Process checkImage = new ProcessBuilder("docker", "images", "-q", this.X3DNA_imageName)
+                .redirectErrorStream(true)
+                .start();
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(checkImage.getInputStream()));
+        String imageId = reader.readLine();
+        checkImage.waitFor();
+
+        if (imageId == null || imageId.isEmpty()) {
+            logger.info("Building X3DNA image...");
+            // Create buildx builder
+            new ProcessBuilder("docker", "buildx", "create", "--use")
+                    .inheritIO().start().waitFor();
+
+            // Build image
+            new ProcessBuilder(
+                    "docker", "buildx", "build",
+                    "--platform", "linux/amd64",
+                    "-f", dockerfile.getAbsolutePath(),
+                    "-t", this.X3DNA_imageName,
+                    "--load",
+                    contextDir.getAbsolutePath()
+            ).inheritIO().start().waitFor();
+            logger.info("Image built: " + this.X3DNA_imageName);
+        } else {
+            logger.info("Image " + this.X3DNA_imageName + " already exists. Skipping build.");
+        }
+
+        // Check and remove existing container
+        Process checkContainer = new ProcessBuilder("docker", "ps", "-a", "-q", "-f", "name=" + this.X3DNA_containerName)
+                .redirectErrorStream(true)
+                .start();
+
+        BufferedReader containerReader = new BufferedReader(new InputStreamReader(checkContainer.getInputStream()));
+        String existingContainerId = containerReader.readLine();
+        checkContainer.waitFor();
+
+        if (existingContainerId != null && !existingContainerId.isEmpty()) {
+            new ProcessBuilder("docker", "rm", "-f", this.X3DNA_containerName)
+                    .inheritIO().start().waitFor();
+        }
+
+        // Run container with shared volume
+        new ProcessBuilder(
+                "docker", "run",
+                "--platform", "linux/amd64",
+                "--name", this.X3DNA_containerName,
+                "-v", sharedFolder.toAbsolutePath() + ":/data",
+                "-dit",
+                this.X3DNA_imageName,
+                "bash"
+        ).inheritIO().start().waitFor();
+
+        logger.info("Container started with shared folder: " + this.X3DNA_containerName);
+    }
+
+    public void stopX3DNAContainer() throws IOException, InterruptedException {
+        new ProcessBuilder("docker", "stop", this.X3DNA_containerName)
+                .inheritIO().start().waitFor();
+    }
+
 
     public void bindHostAndContainer() {
         // TODO: capire se si possono fare diversi bind in diversi momenti nello stesso container
@@ -178,9 +258,30 @@ public class DockerController {
         dockerClient.execStartCmd(execCreateCmdResponse.getId()).exec(new ExecStartResultCallback(System.out, System.err)).awaitCompletion();
     }
 
+    public void fr3d() {
+        // TODO: chiarire dubbio codici PDB
+    }
+
+    public void x3dna() throws InterruptedException, IOException {
+        String shellCmd =
+                "set -e; cd /data; mkdir -p x3dna-output; " +
+                        "for file in *.pdb; do " +
+                        "  filename=$(basename \"$file\"); " +
+                        "  prefix=\"${filename%.*}\"; " +
+                        "  find_pair \"$file\"; " +
+                        "  for output in bestpairs.pdb bp_order.dat col_chains.scr col_helices.scr hel_regions.pdb ref_frames.dat; do " +
+                        "    if [ -f \"$output\" ]; then " +
+                        "      mv \"$output\" \"x3dna-output/${prefix}_$output\"; " +
+                        "    fi; " +
+                        "  done; " +
+                        "done";
+
+        new ProcessBuilder("docker", "exec", this.X3DNA_containerName, "bash", "-c", shellCmd)
+                .inheritIO().start().waitFor();
+    }
+
     public static DockerController getInstance() {
         if (instance == null) instance = new DockerController();
         return instance;
     }
-
 }
