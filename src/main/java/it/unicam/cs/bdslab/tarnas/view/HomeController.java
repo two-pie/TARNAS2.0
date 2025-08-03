@@ -137,7 +137,13 @@ public class HomeController {
                         throw new RuntimeException(e);
                     }
                 },
-                FR3D,               () -> this.dockerController.fr3d(),
+                FR3D,               () -> {
+                    try {
+                        this.dockerController.fr3d();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                },
                 X3DNA,              () -> {
                     try {
                         this.dockerController.x3dna();

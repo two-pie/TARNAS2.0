@@ -258,8 +258,21 @@ public class DockerController {
         dockerClient.execStartCmd(execCreateCmdResponse.getId()).exec(new ExecStartResultCallback(System.out, System.err)).awaitCompletion();
     }
 
-    public void fr3d() {
-        // TODO: chiarire dubbio codici PDB
+    public void fr3d() throws InterruptedException {
+        String shellCmd =
+                "mkdir -p /data/fr3d-output && " +
+                        "cd /home/fr3d-python/fr3d/classifiers/ && " +
+                        "for file in /data/*.pdb; do " +
+                        "filename=$(basename \"$file\" .pdb); " +
+                        "python NA_pairwise_interactions.py -o /data/fr3d-output/ \"/data/${filename}.cif\"; " +
+                        "done && " +
+                        "rm -f /data/*.gz && " +
+                        "rm -rf \"/home/fr3d-python/fr3d/classifiers/C:\\\\Users\\\\zirbel\\\\Documents\\\\FR3D\\\\PDBFiles\\\\\"";
+        // Create exec command
+        ExecCreateCmdResponse execCreateCmdResponse = dockerClient.execCreateCmd(container.getId()).withAttachStdout(true).withAttachStderr(true).withCmd("bash", "-c", shellCmd).exec();
+
+        // Start and attach to output
+        dockerClient.execStartCmd(execCreateCmdResponse.getId()).exec(new ExecStartResultCallback(System.out, System.err)).awaitCompletion();
     }
 
     public void x3dna() throws InterruptedException, IOException {
