@@ -3,7 +3,14 @@ package it.unicam.cs.bdslab.tarnas.view;
 import it.unicam.cs.bdslab.tarnas.controller.DockerController;
 import it.unicam.cs.bdslab.tarnas.controller.IOController;
 import it.unicam.cs.bdslab.tarnas.view.utils.TOOL;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.control.*;
@@ -16,6 +23,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.awt.*;
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
@@ -24,14 +32,28 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-import static it.unicam.cs.bdslab.tarnas.view.utils.TOOL.*;
+import javafx.beans.binding.Bindings;
+import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
+import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 
+import static it.unicam.cs.bdslab.tarnas.view.utils.TOOL.*;
 
 public class HomeController {
     public static final Logger logger = Logger.getLogger("it.unicam.cs.bdslab.tarnas.view.HomeController");
 
-    private final String dockerImageName = "tarnas2.0";
-    private final String dockerImageTag = "latest";
+    public static final String dockerAllToolsImage = "tarnas2.0-image";
+    public static final String dockerAllToolsImageTag = "latest";
+    public static final String dockerAllToolsContainer = "tarnas2.0-container";
+    public static final String dockerfileAllToolsPath = "./docker/all-tools";
+    public static final String dockerX3DNAImage = "x3dna-image";
+    public static final String dockerX3DNAImageTag = "latest";
+    public static final String dockerX3DNAContainer = "x3dna-container";
+    public static final String dockerfileX3DNAPath = "./docker/x3dna-tool/Dockerfile";
 
     private IOController ioController;
     private DockerController dockerController;
@@ -88,13 +110,153 @@ public class HomeController {
             try {
                 var sharedDirectory = selectedDirectory.toPath();
                 this.ioController.loadDirectory(sharedDirectory);
-                this.dockerController.init(this.dockerImageName, this.dockerImageTag, sharedDirectory, this.getPrimaryStage());
+                //this.dockerController.init(this.dockerImageName, this.dockerImageTag, sharedDirectory);
+                //this.dockerController.buildDockerContainerBy(new File("./docker/all-tools"), this.dockerAllToolsImage, this.dockerAllToolsImageTag, this.dockerAllToolsContainer, sharedDirectory);
+                //this.dockerController.buildxDockerContainerBy(new File("./docker/x3dna-tool/Dockerfile"), this.dockerX3DNAImage, this.dockerX3DNAImageTag, this.dockerX3DNAContainer, sharedDirectory);
+                this.initDockerContainers(sharedDirectory);
                 logger.info("Folder added successfully");
             } catch (Exception e) {
                 showAlert(Alert.AlertType.ERROR, "", "", e.getMessage());
             }
         }
         logger.info("Exit add file");
+    }
+
+    private void initDockerContainers(Path sharedDirectory) {
+        // Dialog with a Close button (we'll enable it at 100%)
+        Alert loadingAlert = new Alert(Alert.AlertType.INFORMATION);
+        loadingAlert.setTitle("Docker");
+        loadingAlert.setHeaderText(null);
+        loadingAlert.getDialogPane().getButtonTypes().setAll(ButtonType.CLOSE);
+        Button closeBtn = (Button) loadingAlert.getDialogPane().lookupButton(ButtonType.CLOSE);
+        closeBtn.setDisable(true); // locked until 100%
+
+        Label title = new Label("Building Docker images…");
+        ProgressBar bar = new ProgressBar(0);
+        bar.setPrefWidth(380);
+        Label percent = new Label("0%");
+        VBox box = new VBox(10, title, bar, percent);
+        loadingAlert.getDialogPane().setContent(box);
+        loadingAlert.getDialogPane().setPrefWidth(460);
+
+        // prevent closing before done
+        final BooleanProperty done = new SimpleBooleanProperty(false);
+        loadingAlert.setOnCloseRequest(ev -> {
+            if (!done.get()) ev.consume();
+        });
+
+        loadingAlert.show();
+
+        // progress driver with a gentle ticker
+        DoubleProperty driver = new SimpleDoubleProperty(0.0);
+        bar.progressProperty().bind(driver);
+        percent.textProperty().bind(Bindings.createStringBinding(
+                () -> Math.min(100, (int) Math.round(driver.get() * 100)) + "%",
+                driver));
+
+        Timeline ticker = new Timeline(
+                new KeyFrame(Duration.millis(120), e -> {
+                    double target = (double) box.getProperties().getOrDefault("targetProgress", 0.0);
+                    double cur = driver.get();
+                    // ease toward the target
+                    double next = cur + Math.min(0.02, Math.max(0.005, (target - cur) * 0.20));
+                    driver.set(Math.min(next, target));
+                })
+        );
+        ticker.setCycleCount(Animation.INDEFINITE);
+        ticker.play();
+
+        Runnable to50 = () -> box.getProperties().put("targetProgress", 0.50);
+        Runnable to95 = () -> box.getProperties().put("targetProgress", 0.95);
+        Runnable to100 = () -> box.getProperties().put("targetProgress", 1.00);
+
+        // --- TASKS ---
+        Task<Integer> taskBuild = new Task<>() {
+            @Override
+            protected Integer call() throws Exception {
+                return dockerController.buildDockerContainerBy(
+                        new File(dockerfileAllToolsPath),
+                        dockerAllToolsImage, dockerAllToolsImageTag,
+                        dockerAllToolsContainer, sharedDirectory
+                );
+            }
+        };
+
+        Task<Integer> taskBuildx = new Task<>() {
+            @Override
+            protected Integer call() throws Exception {
+                return dockerController.buildxDockerContainerBy(
+                        new File(dockerfileX3DNAPath),
+                        dockerX3DNAImage, dockerX3DNAImageTag,
+                        dockerX3DNAContainer, sharedDirectory
+                );
+            }
+        };
+
+        // sequencing + progress
+        taskBuild.setOnRunning(e -> {
+            title.setText("Building Docker images… (step 1/2)");
+            to50.run();
+        });
+
+        taskBuild.setOnSucceeded(e -> {
+            Integer r1 = taskBuild.getValue();
+            if (r1 != null && r1 == 1) {
+                title.setText("Building Docker images… (step 2/2)");
+                to95.run();
+                new Thread(taskBuildx, "docker-buildx").start();
+            } else {
+                ticker.stop();
+                title.setText("Build step 1 failed. Check logs.");
+                closeBtn.setDisable(false);
+            }
+        });
+
+        taskBuild.setOnFailed(e -> {
+            ticker.stop();
+            title.setText("Build step 1 failed. Check logs.");
+            closeBtn.setDisable(false);
+        });
+
+        taskBuildx.setOnSucceeded(e -> {
+            Integer r2 = taskBuildx.getValue();
+            Integer r1 = taskBuild.getValue();
+            if (r1 != null && r1 == 1 && r2 != null && r2 == 1) {
+                // both succeeded → animate to 100, enable closing, auto-close after a moment
+                to100.run();
+                Timeline finish = new Timeline(
+                        new KeyFrame(Duration.millis(2550), ae -> {
+                            driver.set(1.0);
+                            done.set(true);
+                            closeBtn.setDisable(false);
+                            title.setText("Docker images ready.");
+                        }),
+                        new KeyFrame(Duration.millis(5100), ae -> {
+                            ticker.stop();
+                            loadingAlert.close();
+                        })
+                );
+                finish.play();
+            } else {
+                ticker.stop();
+                title.setText("Build step 2 failed or returned 0. Check logs.");
+                closeBtn.setDisable(false);
+            }
+        });
+
+        taskBuildx.setOnRunning(e -> {
+            // ensure the second phase visibly advances beyond 50%
+            to95.run();
+        });
+
+        taskBuildx.setOnFailed(e -> {
+            ticker.stop();
+            title.setText("Build step 2 failed. Check logs.");
+            closeBtn.setDisable(false);
+        });
+
+        // kick off
+        new Thread(taskBuild, "docker-build").start();
     }
 
 
@@ -116,37 +278,37 @@ public class HomeController {
                         throw new RuntimeException(e);
                     }
                 },
-                RNAVIEW,            () -> {
+                RNAVIEW, () -> {
                     try {
                         this.dockerController.rnaView();
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
                 },
-                BARNABA,            () -> {
+                BARNABA, () -> {
                     try {
                         this.dockerController.baRNAba();
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
                 },
-                BPNET,              () -> {
+                BPNET, () -> {
                     try {
                         this.dockerController.bpnet();
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
                 },
-                FR3D,               () -> {
+                FR3D, () -> {
                     try {
                         this.dockerController.fr3d();
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
                 },
-                X3DNA,              () -> {
+                X3DNA, () -> {
                     try {
-                        this.dockerController.x3dna();
+                        this.dockerController.x3dnaBy(dockerX3DNAContainer);
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     } catch (IOException e) {

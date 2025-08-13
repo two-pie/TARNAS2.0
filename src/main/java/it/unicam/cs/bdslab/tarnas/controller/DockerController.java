@@ -8,28 +8,22 @@ import com.github.dockerjava.api.model.*;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.core.command.ExecStartResultCallback;
-import it.unicam.cs.bdslab.tarnas.view.HomeController;
-import javafx.scene.control.Alert;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Path;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Logger;
+
+// TODO: unmount volumes, remove generated containers after using buildx
 
 public class DockerController {
 
     public static final Logger logger = Logger.getLogger("it.unicam.cs.bdslab.tarnas.controller.DockerController");
 
     private static DockerController instance = new DockerController();
-
-    private final String X3DNA_containerName = "x3dna-container";
-    private final String X3DNA_imageName = "x3dna-image";
 
     private CreateContainerResponse container;
     private final DockerClient dockerClient;
@@ -40,11 +34,7 @@ public class DockerController {
         dockerClient = DockerClientBuilder.getInstance(config).build();
     }
 
-    public void init(String imageName, String imageTag, Path sharedFolder, Stage primaryStage) throws IOException, InterruptedException {
-
-        // Define paths and tags
-        File dockerContext = new File("./docker/all-tools");  // Make sure this contains the Dockerfile
-
+    public int buildDockerContainerBy(File dockerContext, String imageName, String imageTag, String containerName, Path sharedFolder) throws IOException, InterruptedException {
         // Build the image
         List<Image> images = dockerClient.listImagesCmd().exec();
         boolean imageExists = false;
@@ -54,7 +44,6 @@ public class DockerController {
                 if (tags != null) {
                     for (String tag : tags) {
                         if ((imageName + ":" + imageTag).equals(tag)) {
-                            imageExists = true;
                             logger.info("Image found with ID: " + image.getId());
                             break;
                         }
@@ -79,34 +68,20 @@ public class DockerController {
                 );
 
 
-        container = dockerClient.createContainerCmd(imageName).withName("tarnas2.0-container").withHostConfig(hostConfig).exec();
+        container = dockerClient.createContainerCmd(imageName).withName(containerName).withHostConfig(hostConfig).exec();
 
         // Start the container
         dockerClient.startContainerCmd(container.getId()).exec();
         logger.info("Container started: " + container.getId());
 
-        // Stream container logs
-        /*dockerClient.logContainerCmd(container.getId())
-                .withStdOut(true)
-                .withStdErr(true)
-                .withFollowStream(true)
-                .exec(new LogContainerResultCallback() {
-                    @Override
-                    public void onNext(Frame frame) {
-                        System.out.print(new String(frame.getPayload()));
-                    }
-                }).awaitCompletion();*/
-
-        this.initX3DNAContainer(sharedFolder);
-
+        return 1;
     }
 
-    public void initX3DNAContainer(Path sharedFolder) throws IOException, InterruptedException {
-        File dockerfile = new File("./docker/x3dna-tool/Dockerfile");
-        File contextDir = dockerfile.getParentFile(); // "./docker/x3dna-tool/"
+    public int buildxDockerContainerBy(File dockerFile, String imageName, String imageTag, String containerName, Path sharedFolder) throws IOException, InterruptedException {
+        File contextDir = dockerFile.getParentFile();
 
         // Check if the image already exists
-        Process checkImage = new ProcessBuilder("docker", "images", "-q", this.X3DNA_imageName)
+        Process checkImage = new ProcessBuilder("docker", "images", "-q", imageName)
                 .redirectErrorStream(true)
                 .start();
 
@@ -115,7 +90,7 @@ public class DockerController {
         checkImage.waitFor();
 
         if (imageId == null || imageId.isEmpty()) {
-            logger.info("Building X3DNA image...");
+            logger.info("Building " + imageName + " image...");
             // Create buildx builder
             new ProcessBuilder("docker", "buildx", "create", "--use")
                     .inheritIO().start().waitFor();
@@ -124,18 +99,18 @@ public class DockerController {
             new ProcessBuilder(
                     "docker", "buildx", "build",
                     "--platform", "linux/amd64",
-                    "-f", dockerfile.getAbsolutePath(),
-                    "-t", this.X3DNA_imageName,
+                    "-f", dockerFile.getAbsolutePath(),
+                    "-t", imageName,
                     "--load",
                     contextDir.getAbsolutePath()
             ).inheritIO().start().waitFor();
-            logger.info("Image built: " + this.X3DNA_imageName);
+            logger.info("Image built: " + imageName);
         } else {
-            logger.info("Image " + this.X3DNA_imageName + " already exists. Skipping build.");
+            logger.info("Image " + imageName + " already exists. Skipping build.");
         }
 
         // Check and remove existing container
-        Process checkContainer = new ProcessBuilder("docker", "ps", "-a", "-q", "-f", "name=" + this.X3DNA_containerName)
+        Process checkContainer = new ProcessBuilder("docker", "ps", "-a", "-q", "-f", "name=" + containerName)
                 .redirectErrorStream(true)
                 .start();
 
@@ -144,7 +119,7 @@ public class DockerController {
         checkContainer.waitFor();
 
         if (existingContainerId != null && !existingContainerId.isEmpty()) {
-            new ProcessBuilder("docker", "rm", "-f", this.X3DNA_containerName)
+            new ProcessBuilder("docker", "rm", "-f", containerName)
                     .inheritIO().start().waitFor();
         }
 
@@ -152,27 +127,99 @@ public class DockerController {
         new ProcessBuilder(
                 "docker", "run",
                 "--platform", "linux/amd64",
-                "--name", this.X3DNA_containerName,
+                "--name", containerName,
                 "-v", sharedFolder.toAbsolutePath() + ":/data",
                 "-dit",
-                this.X3DNA_imageName,
+                imageName,
                 "bash"
         ).inheritIO().start().waitFor();
 
-        logger.info("Container started with shared folder: " + this.X3DNA_containerName);
+        logger.info("Container started with shared folder: " + containerName);
+
+        return 1;
     }
 
-    public void stopX3DNAContainer() throws IOException, InterruptedException {
-        new ProcessBuilder("docker", "stop", this.X3DNA_containerName)
-                .inheritIO().start().waitFor();
+    /**
+     * Stop a container by name or ID.
+     *
+     * @param containerNameOrId e.g. "my-container" or a container ID/prefix
+     * @param timeoutSeconds    null to use daemon default; otherwise grace period before SIGKILL
+     * @return true if a stop was issued and the exit status looked OK; false otherwise
+     */
+    public boolean stopContainerByNameOrId(String containerNameOrId, Integer timeoutSeconds) {
+        Objects.requireNonNull(containerNameOrId, "containerNameOrId");
+
+        // 1) Try Docker Java API first
+        try {
+            // resolve the container ID by name or ID/prefix
+            String resolvedId = resolveContainerId(containerNameOrId);
+            if (resolvedId != null) {
+                var cmd = dockerClient.stopContainerCmd(resolvedId);
+                if (timeoutSeconds != null) {
+                    try {
+                        cmd.withTimeout(timeoutSeconds);
+                    } catch (Throwable ignored) {
+                        // older docker-java may not have withTimeout; ignore
+                    }
+                }
+                cmd.exec();
+                logger.info("Stopped container via API: {}" + resolvedId);
+                return true;
+            } else
+                logger.severe("Container not found via API: {}" + containerNameOrId);
+        } catch (Exception apiErr) {
+            logger.severe("API stop failed (will try CLI): {}" + apiErr.toString());
+        }
+
+        // 2) Fallback to CLI: docker stop <nameOrId>
+        try {
+            ProcessBuilder pb = new ProcessBuilder("docker", "stop",
+                    timeoutSeconds != null ? String.format("--time=%d", timeoutSeconds) : "",
+                    containerNameOrId);
+            // remove empty arg if no timeout
+            pb.command().removeIf(String::isBlank);
+            Process p = pb.inheritIO().start();
+            int code = p.waitFor();
+            if (code == 0) {
+                logger.info("Stopped container via CLI: {}" + containerNameOrId);
+                return true;
+            } else
+                logger.severe("CLI 'docker stop' exited with {}" + code);
+        } catch (IOException | InterruptedException cliErr) {
+            Thread.currentThread().interrupt();
+            logger.severe("CLI stop failed: {}" + cliErr);
+        }
+
+        return false;
     }
 
+    /**
+     * Resolve a container ID from a name or ID/prefix.
+     */
+    private String resolveContainerId(String nameOrId) {
+        // Try direct inspect (works for ID or full name)
+        try {
+            logger.info("Container: " + nameOrId + " - RESOLVED ID: " + dockerClient.inspectContainerCmd(nameOrId).exec().getId());
+            return dockerClient.inspectContainerCmd(nameOrId).exec().getId();
+        } catch (Exception ignored) {
+            // not directly resolvable; try listing
+        }
 
-    public void bindHostAndContainer() {
-        // TODO: capire se si possono fare diversi bind in diversi momenti nello stesso container
-        // TODO: capire se smontare la shared folder oppure no
+        // Names in docker-java come with a leading "/" (e.g. "/my-container")
+        String wanted = nameOrId.startsWith("/") ? nameOrId : "/" + nameOrId;
 
-        // se si fa questo metodo, verrà richiamato ogni volta dentro addFolder
+        return dockerClient.listContainersCmd()
+                .withShowAll(true)
+                .exec()
+                .stream()
+                .filter(c ->
+                        // match by exact name
+                        Arrays.asList(Optional.ofNullable(c.getNames()).orElse(new String[0])).contains(wanted)
+                                // or by ID prefix
+                                || c.getId().startsWith(nameOrId))
+                .map(com.github.dockerjava.api.model.Container::getId)
+                .findFirst()
+                .orElse(null);
     }
 
     public boolean isContainerRunning() {
@@ -180,11 +227,6 @@ public class DockerController {
                 .exec()
                 .getState()
                 .getRunning();
-    }
-
-    public void stopContainer() {
-        dockerClient.stopContainerCmd(container.getId()).exec();
-        logger.info("Container finished execution.");
     }
 
     public void rnaView() throws InterruptedException {
@@ -275,7 +317,7 @@ public class DockerController {
         dockerClient.execStartCmd(execCreateCmdResponse.getId()).exec(new ExecStartResultCallback(System.out, System.err)).awaitCompletion();
     }
 
-    public void x3dna() throws InterruptedException, IOException {
+    public void x3dnaBy(String containerName) throws InterruptedException, IOException {
         String shellCmd =
                 "set -e; cd /data; mkdir -p x3dna-output; " +
                         "for file in *.pdb; do " +
@@ -289,7 +331,7 @@ public class DockerController {
                         "  done; " +
                         "done";
 
-        new ProcessBuilder("docker", "exec", this.X3DNA_containerName, "bash", "-c", shellCmd)
+        new ProcessBuilder("docker", "exec", containerName, "bash", "-c", shellCmd)
                 .inheritIO().start().waitFor();
     }
 
