@@ -246,12 +246,13 @@ public class DockerController {
     }
 
     public void rnapolisAnnotator() throws InterruptedException {
-        String shellCmd = "mkdir -p /data/rnapolis-output &&" +
-                "for file in /data/*.pdb; do " +
-                "    filename=$(basename \"$file\");" +
-                "    name=\"${filename%.}\";" +
-                "    annotator -b \"/data/rnapolis-output/${name}.bpseq\" \"$file\";" +
-                "done";
+        String shellCmd =
+                "mkdir -p /data/rnapolis-output && " +
+                        "for file in /data/*.pdb; do " +
+                        "    filename=$(basename \"$file\"); " +
+                        "    name=\"${filename%.*}\"; " +
+                        "    annotator -e \"$file\" | sed 's/^[ \t]*//' > \"/data/rnapolis-output/${name}.3db\"; " +
+                        "done";
 
         // Create exec command
         ExecCreateCmdResponse execCreateCmdResponse = dockerClient.execCreateCmd(container.getId()).withAttachStdout(true).withAttachStderr(true).withCmd("bash", "-c", shellCmd).exec();
