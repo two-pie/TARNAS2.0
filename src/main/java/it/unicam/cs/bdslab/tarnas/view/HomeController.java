@@ -110,9 +110,6 @@ public class HomeController {
             try {
                 var sharedDirectory = selectedDirectory.toPath();
                 this.ioController.loadDirectory(sharedDirectory);
-                //this.dockerController.init(this.dockerImageName, this.dockerImageTag, sharedDirectory);
-                //this.dockerController.buildDockerContainerBy(new File("./docker/all-tools"), this.dockerAllToolsImage, this.dockerAllToolsImageTag, this.dockerAllToolsContainer, sharedDirectory);
-                //this.dockerController.buildxDockerContainerBy(new File("./docker/x3dna-tool/Dockerfile"), this.dockerX3DNAImage, this.dockerX3DNAImageTag, this.dockerX3DNAContainer, sharedDirectory);
                 this.initDockerContainers(sharedDirectory);
                 logger.info("Folder added successfully");
             } catch (Exception e) {

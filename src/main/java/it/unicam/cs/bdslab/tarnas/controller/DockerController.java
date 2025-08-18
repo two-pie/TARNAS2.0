@@ -222,11 +222,22 @@ public class DockerController {
                 .orElse(null);
     }
 
-    public boolean isContainerRunning() {
-        return this.container != null && this.dockerClient.inspectContainerCmd(container.getId())
-                .exec()
-                .getState()
-                .getRunning();
+    public boolean isContainerRunning(String containerName) {
+        String containerId = resolveContainerId(containerName);
+        if (containerId == null) {
+            logger.severe("Container not found: " + containerName);
+            return false;
+        }
+
+        try {
+            return dockerClient.inspectContainerCmd(containerId)
+                    .exec()
+                    .getState()
+                    .getRunning();
+        } catch (Exception e) {
+            logger.severe("Failed to inspect container: " + containerName);
+            return false;
+        }
     }
 
     public void rnaView() throws InterruptedException {

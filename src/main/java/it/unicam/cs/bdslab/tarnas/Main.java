@@ -19,6 +19,7 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Objects;
@@ -57,8 +58,10 @@ public class Main extends Application {
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
+                logger.info("Closing the app...");
                 Platform.exit();
             }
+
         });
 
         stage.show();
@@ -73,109 +76,112 @@ public class Main extends Application {
      * stopBothContainersWithOneAlert("x3dna-container", "all-tools-container", 10);
      */
     public void stopBothContainersWithOneAlert(String name1, String name2, Integer timeoutSeconds) {
-        // Build the alert UI
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Stopping Docker Containers");
-        alert.setHeaderText(null);
+        if (DockerController.getInstance().isContainerRunning(HomeController.dockerAllToolsContainer) && DockerController.getInstance().isContainerRunning(HomeController.dockerX3DNAContainer)) {
+            // Build the alert UI
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Stopping Docker Containers");
+            alert.setHeaderText(null);
 
-        Label title = new Label("Stopping containers…");
-        ProgressBar bar = new ProgressBar(0);
-        bar.setPrefWidth(380);
-        Label percent = new Label("0%");
+            Label title = new Label("Stopping containers…");
+            ProgressBar bar = new ProgressBar(0);
+            bar.setPrefWidth(380);
+            Label percent = new Label("0%");
 
-        VBox box = new VBox(10, title, bar, percent);
-        box.setFillWidth(true);
-        alert.getDialogPane().setContent(box);
-        alert.getDialogPane().getButtonTypes().setAll(ButtonType.CLOSE);
-        Button closeBtn = (Button) alert.getDialogPane().lookupButton(ButtonType.CLOSE);
-        closeBtn.setDisable(true); // only enabled at 100%
-        alert.getDialogPane().setPrefWidth(460);
+            VBox box = new VBox(10, title, bar, percent);
+            box.setFillWidth(true);
+            alert.getDialogPane().setContent(box);
+            alert.getDialogPane().getButtonTypes().setAll(ButtonType.CLOSE);
+            Button closeBtn = (Button) alert.getDialogPane().lookupButton(ButtonType.CLOSE);
+            closeBtn.setDisable(true); // only enabled at 100%
+            alert.getDialogPane().setPrefWidth(460);
 
-        // Prevent closing before both are done
-        final BooleanProperty done = new SimpleBooleanProperty(false);
-        alert.setOnCloseRequest(ev -> {
-            if (!done.get()) ev.consume();
-        });
+            // Prevent closing before both are done
+            final BooleanProperty done = new SimpleBooleanProperty(false);
+            alert.setOnCloseRequest(ev -> {
+                if (!done.get()) ev.consume();
+            });
 
-        // Two background tasks: stop by name/ID and mark progress at 100% on completion
-        Task<Boolean> t1 = new Task<>() {
-            @Override
-            protected Boolean call() {
-                try {
-                    // No fine-grained progress from Docker; jump to 100% when finished
-                    boolean ok = DockerController.getInstance().stopContainerByNameOrId(name1, timeoutSeconds);
-                    updateProgress(1, 1);
-                    return ok;
-                } catch (Throwable t) {
-                    updateProgress(1, 1);
-                    return false;
+            // Two background tasks: stop by name/ID and mark progress at 100% on completion
+            Task<Boolean> t1 = new Task<>() {
+                @Override
+                protected Boolean call() {
+                    try {
+                        // No fine-grained progress from Docker; jump to 100% when finished
+                        boolean ok = DockerController.getInstance().stopContainerByNameOrId(name1, timeoutSeconds);
+                        updateProgress(1, 1);
+                        return ok;
+                    } catch (Throwable t) {
+                        updateProgress(1, 1);
+                        return false;
+                    }
                 }
-            }
-        };
-        Task<Boolean> t2 = new Task<>() {
-            @Override
-            protected Boolean call() {
-                try {
-                    boolean ok = DockerController.getInstance().stopContainerByNameOrId(name2, timeoutSeconds);
-                    updateProgress(1, 1);
-                    return ok;
-                } catch (Throwable t) {
-                    updateProgress(1, 1);
-                    return false;
+            };
+            Task<Boolean> t2 = new Task<>() {
+                @Override
+                protected Boolean call() {
+                    try {
+                        boolean ok = DockerController.getInstance().stopContainerByNameOrId(name2, timeoutSeconds);
+                        updateProgress(1, 1);
+                        return ok;
+                    } catch (Throwable t) {
+                        updateProgress(1, 1);
+                        return false;
+                    }
                 }
-            }
-        };
+            };
 
-        // Combined progress = average of task progresses
-        DoubleBinding combined = t1.progressProperty().add(t2.progressProperty()).divide(2.0);
-        bar.progressProperty().bind(combined);
-        percent.textProperty().bind(Bindings.createStringBinding(
-                () -> Math.min(100, (int) Math.round(combined.get() * 100)) + "%",
-                combined
-        ));
+            // Combined progress = average of task progresses
+            DoubleBinding combined = t1.progressProperty().add(t2.progressProperty()).divide(2.0);
+            bar.progressProperty().bind(combined);
+            percent.textProperty().bind(Bindings.createStringBinding(
+                    () -> Math.min(100, (int) Math.round(combined.get() * 100)) + "%",
+                    combined
+            ));
 
-        // When BOTH tasks finish, finalize UI
-        Runnable onAllDone = () -> {
-            if (t1.isDone() && t2.isDone()) {
-                boolean ok1 = getSafe(t1, false);
-                boolean ok2 = getSafe(t2, false);
-                title.setText(ok1 && ok2 ? "Containers stopped." : "Some containers failed to stop.");
-                done.set(true);
-                closeBtn.setDisable(false);
+            // When BOTH tasks finish, finalize UI
+            Runnable onAllDone = () -> {
+                if (t1.isDone() && t2.isDone()) {
+                    boolean ok1 = getSafe(t1, false);
+                    boolean ok2 = getSafe(t2, false);
+                    title.setText(ok1 && ok2 ? "Containers stopped." : "Some containers failed to stop.");
+                    done.set(true);
+                    closeBtn.setDisable(false);
 
-                // Snap to 100% in case rounding left it at 99%
-                bar.progressProperty().unbind();
-                bar.setProgress(1.0);
-                percent.textProperty().unbind();
-                percent.setText("100%");
+                    // Snap to 100% in case rounding left it at 99%
+                    bar.progressProperty().unbind();
+                    bar.setProgress(1.0);
+                    percent.textProperty().unbind();
+                    percent.setText("100%");
 
-                // Auto-close after a short beat (optional). Remove if you want manual close only.
-                new Timeline(new KeyFrame(javafx.util.Duration.millis(900), e -> alert.close())).play();
-            }
-        };
+                    // Auto-close after a short beat (optional). Remove if you want manual close only.
+                    new Timeline(new KeyFrame(javafx.util.Duration.millis(900), e -> alert.close())).play();
+                }
+            };
 
-        t1.stateProperty().addListener((obs, old, st) -> {
-            if (st == Worker.State.SUCCEEDED || st == Worker.State.FAILED || st == Worker.State.CANCELLED) {
-                onAllDone.run();
-            }
-        });
-        t2.stateProperty().addListener((obs, old, st) -> {
-            if (st == Worker.State.SUCCEEDED || st == Worker.State.FAILED || st == Worker.State.CANCELLED) {
-                onAllDone.run();
-            }
-        });
+            t1.stateProperty().addListener((obs, old, st) -> {
+                if (st == Worker.State.SUCCEEDED || st == Worker.State.FAILED || st == Worker.State.CANCELLED) {
+                    onAllDone.run();
+                }
+            });
+            t2.stateProperty().addListener((obs, old, st) -> {
+                if (st == Worker.State.SUCCEEDED || st == Worker.State.FAILED || st == Worker.State.CANCELLED) {
+                    onAllDone.run();
+                }
+            });
 
-        // Run tasks on a small executor (non-daemon so JVM waits if needed)
-        ExecutorService pool = Executors.newFixedThreadPool(2);
-        pool.submit(t1);
-        pool.submit(t2);
+            // Run tasks on a small executor (non-daemon so JVM waits if needed)
+            ExecutorService pool = Executors.newFixedThreadPool(2);
+            pool.submit(t1);
+            pool.submit(t2);
 
-        // Show ONE modal alert and wait until it's closed (which happens when both tasks are done)
-        // Because tasks are background, the dialog remains responsive and updates progress.
-        alert.showAndWait();
+            // Show ONE modal alert and wait until it's closed (which happens when both tasks are done)
+            // Because tasks are background, the dialog remains responsive and updates progress.
+            alert.showAndWait();
 
-        // Cleanup executor
-        pool.shutdownNow();
+            // Cleanup executor
+            pool.shutdownNow();
+        } else
+            logger.info("No running containers");
     }
 
     // Helper: safely unwrap Task result without throwing
