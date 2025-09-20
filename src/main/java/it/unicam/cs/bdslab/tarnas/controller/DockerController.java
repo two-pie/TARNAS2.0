@@ -17,8 +17,11 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.logging.Logger;
 
-// TODO: unmount volumes, remove generated containers after using buildx
+// TODO: add Biojava interaction and check if the updated tool functions work with " + this.preprocessingPath + " changes
 
+// TODO: make some experiments with a csv file uploaded with the pdb files!
+
+// TODO: unmount volumes, remove generated containers after using buildx
 public class DockerController {
 
     public static final Logger logger = Logger.getLogger("it.unicam.cs.bdslab.tarnas.controller.DockerController");
@@ -27,6 +30,7 @@ public class DockerController {
 
     private CreateContainerResponse container;
     private final DockerClient dockerClient;
+    private final String preprocessingPath = "/data/preprocessed";
 
     private DockerController() {
         // Setup Docker Client
@@ -243,10 +247,10 @@ public class DockerController {
     public void rnaView() throws InterruptedException {
         String shellCmd = "mkdir -p /data/rnaview-output && "
                 + "cd /home/RNAView/bin && "
-                + "for file in /data/*.pdb; do "
+                + "for file in " + this.preprocessingPath + "/*.pdb; do "
                 + "filename=$(basename \"$file\"); "
                 + "./rnaview \"$file\"; "
-                + "find /data -maxdepth 1 -type f -name \"${filename%.*}.*\" -newer \"$file\" -exec mv {} /data/rnaview-output/ \\;; "
+                + "find " + this.preprocessingPath + " -maxdepth 1 -type f -name \"${filename%.*}.*\" -newer \"$file\" -exec mv {} /data/rnaview-output/ \\;; "
                 + "done";
 
         // Create exec command
@@ -259,7 +263,7 @@ public class DockerController {
     public void rnapolisAnnotator() throws InterruptedException {
         String shellCmd =
                 "mkdir -p /data/rnapolis-output && " +
-                        "for file in /data/*.pdb; do " +
+                        "for file in " + this.preprocessingPath + "/*.pdb; do " +
                         "    filename=$(basename \"$file\"); " +
                         "    name=\"${filename%.*}\"; " +
                         "    annotator -e \"$file\" | sed 's/^[ \t]*//' > \"/data/rnapolis-output/${name}.3db\"; " +
@@ -275,7 +279,7 @@ public class DockerController {
     public void baRNAba() throws InterruptedException {
         String shellCmd =
                 "mkdir -p /data/barnaba-output && " +
-                        "for file in /data/*.pdb; do " +
+                        "for file in " + this.preprocessingPath + "/*.pdb; do " +
                         "filename=$(basename \"$file\"); " +
                         "name=\"${filename%.}\"; " +
                         "./barnaba/bin/barnaba ANNOTATE --pdb \"$file\"; " +
@@ -293,11 +297,11 @@ public class DockerController {
     public void bpnet() throws InterruptedException {
         String shellCmd = "mkdir -p /data/bpnet-output && "
                 + "cd /home/bpnet/bin && " +
-                "for file in /data/*.pdb; do " +
+                "for file in " + this.preprocessingPath + "/*.pdb; do " +
                 "  filename=$(basename \"$file\"); " +
                 "  prefix=\"${filename%.*}\"; " +
                 "  ./bpnet.linux \"$file\"; " +
-                "  for output in /data/${prefix}*; do " +
+                "  for output in " + this.preprocessingPath + "/${prefix}*; do " +
                 "    [ \"$output\" = \"$file\" ] && continue; " +  // skip the input file
                 "    outname=$(basename \"$output\"); " +
                 "    mv \"$output\" \"/data/bpnet-output/${prefix}.$outname\"; " +
@@ -312,6 +316,7 @@ public class DockerController {
         dockerClient.execStartCmd(execCreateCmdResponse.getId()).exec(new ExecStartResultCallback(System.out, System.err)).awaitCompletion();
     }
 
+    // TODO: check if replacing data with " + this.preprocessingPath + " or not
     public void fr3d() throws InterruptedException {
         String shellCmd =
                 "mkdir -p /data/fr3d-output && " +
@@ -332,7 +337,7 @@ public class DockerController {
     public void x3dnaBy(String containerName) throws InterruptedException, IOException {
         String shellCmd =
                 "set -e; cd /data; mkdir -p x3dna-output; " +
-                        "for file in *.pdb; do " +
+                        "for file in " + this.preprocessingPath + "/*.pdb; do " +
                         "  filename=$(basename \"$file\"); " +
                         "  prefix=\"${filename%.*}\"; " +
                         "  find_pair \"$file\"; " +
