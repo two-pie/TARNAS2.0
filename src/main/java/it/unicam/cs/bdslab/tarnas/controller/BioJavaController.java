@@ -63,7 +63,7 @@ public class BioJavaController {
     private Predicate<Chain> getRNAFilter() {
         return chain -> {
             String seq = chain.getAtomSequence().toUpperCase();
-            return seq.matches("[AGCU]+"); // only RNA residues
+            return seq.matches(".*U.*"); // only RNA residues
         };
     }
 
