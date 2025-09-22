@@ -13,6 +13,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.logging.Logger;
@@ -78,7 +81,133 @@ public class DockerController {
         dockerClient.startContainerCmd(container.getId()).exec();
         logger.info("Container started: " + container.getId());
 
+        // --- ensure /data/preprocessed inside the container (not on host explicitly) ---
+        makeDirInContainer(container.getId(), "/data/preprocessed");
+
+        // --- process exactly ONE CSV in sharedFolder ---
+        Path csv = pickSingleCsv(sharedFolder);
+        if (csv == null) {
+            logger.info("No CSV file found in {} — nothing to process." + sharedFolder);
+            return 0;
+        }
+        logger.info("Using CSV: {}" + csv.getFileName());
+
+        processCsvAndFilterPdbs(csv, sharedFolder, containerSharedFolder);
+
         return 1;
+    }
+
+    private void makeDirInContainer(String containerId, String dir) throws IOException, InterruptedException {
+        String[] mkdirCmd = {"mkdir", "-p", dir};
+        ExecCreateCmdResponse execCreate = dockerClient.execCreateCmd(containerId)
+                .withAttachStdout(true)
+                .withAttachStderr(true)
+                .withCmd(mkdirCmd)
+                .exec();
+
+        dockerClient.execStartCmd(execCreate.getId())
+                .exec(new ExecStartResultCallback(System.out, System.err))
+                .awaitCompletion();
+
+        logger.info("Ensured directory exists in container: {}" + dir);
+    }
+
+    /**
+     * Pick exactly one CSV in the folder:
+     * - If none: return null.
+     * - If multiple: pick the first after sorting by filename, and log a warning.
+     */
+    private Path pickSingleCsv(Path sharedFolder) throws IOException {
+        List<Path> csvs = new ArrayList<>();
+        try (DirectoryStream<Path> ds = Files.newDirectoryStream(sharedFolder, "*.csv")) {
+            for (Path p : ds) csvs.add(p);
+        }
+        if (csvs.isEmpty()) return null;
+
+        csvs.sort(Comparator.comparing(p -> p.getFileName().toString()));
+        if (csvs.size() > 1)
+            logger.severe("Multiple CSV files found in {} — using the first: {}" + sharedFolder + csvs.get(0).getFileName());
+        return csvs.get(0);
+    }
+
+    /**
+     * Reads the single CSV and processes potentially many PDB rows.
+     * CSV: col0 = pdbPath (relative to /data), col1 = chainFilter (e.g., "A;B").
+     * Output: /data/preprocessed/<basename>_filtered.pdb
+     */
+    private void processCsvAndFilterPdbs(Path csvFile, Path sharedFolder, String containerSharedFolder) throws IOException {
+        Path preprocessedHost = sharedFolder.resolve("preprocessed");
+
+        try (BufferedReader br = Files.newBufferedReader(csvFile, StandardCharsets.UTF_8)) {
+            String line;
+            boolean headerSkipped = false;
+
+            while ((line = br.readLine()) != null) {
+                if (line.isBlank()) continue;
+
+                if (!headerSkipped && looksLikeHeader(line)) {
+                    headerSkipped = true;
+                    continue;
+                }
+
+                String[] cols = parseRow(line);
+                if (cols.length < 2) {
+                    logger.severe("Skipping row (needs at least 2 columns): {}" + line);
+                    continue;
+                }
+
+                String pdbRelPath = cols[0].trim();   // path relative to /data
+                String chainFilter = cols[1].trim();  // e.g., "A;B"
+
+                // Host path for reading (bind of /data)
+                Path pdbHostPath = sharedFolder.resolve(pdbRelPath).normalize();
+                if (!Files.exists(pdbHostPath)) {
+                    logger.severe("PDB not found on host: {} (row: {})" + pdbHostPath + line);
+                    continue;
+                }
+
+                // Output under /data/preprocessed/<basename>_filtered.pdb
+                String baseName = stripExtension(pdbHostPath.getFileName().toString());
+                Path outHostPath = preprocessedHost.resolve(baseName + "_filtered.pdb");
+
+                try {
+                    var controller = BioJavaController.getInstance();
+                    var filter = controller.getDefaultChainFilter(chainFilter);
+
+                    var filtered = controller.readPDBFile(pdbHostPath.toAbsolutePath().toString(), filter);
+                    controller.writePDBFile(filtered, outHostPath.toAbsolutePath().toString());
+
+                    logger.info("Wrote filtered PDB: {}" + outHostPath);
+                } catch (Exception e) {
+                    logger.severe("Failed processing row: {} — {}" + line + e.getMessage() + e);
+                }
+            }
+        }
+    }
+
+    private static String[] parseRow(String line) {
+        // Simple CSV split; swap with a CSV library if quoting/commas are expected.
+        return line.split(",", -1);
+    }
+
+    private static boolean looksLikeHeader(String line) {
+        String lower = line.toLowerCase(Locale.ROOT);
+        return lower.contains("pdb") || lower.contains("path") || lower.contains("chain");
+    }
+
+    private static String stripExtension(String filename) {
+        int i = filename.lastIndexOf('.');
+        return i > 0 ? filename.substring(0, i) : filename;
+    }
+
+
+    private static String unixify(String relPath) {
+        return relPath.replace('\\', '/');
+    }
+
+    private static String joinUnix(String a, String b) {
+        if (a.endsWith("/")) return a + b;
+        return a + "/" + b;
     }
 
     public int buildxDockerContainerBy(File dockerFile, String imageName, String imageTag, String containerName, Path sharedFolder) throws IOException, InterruptedException {
@@ -139,6 +268,8 @@ public class DockerController {
         ).inheritIO().start().waitFor();
 
         logger.info("Container started with shared folder: " + containerName);
+
+        makeDirInContainer(this.resolveContainerId(containerName), "/data/preprocessed");
 
         return 1;
     }
