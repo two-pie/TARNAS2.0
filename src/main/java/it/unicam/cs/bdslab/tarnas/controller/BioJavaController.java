@@ -9,6 +9,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.function.Predicate;
 
 public class BioJavaController {
@@ -24,7 +25,7 @@ public class BioJavaController {
         return instance;
     }
 
-    public Structure readPDBFile(String path, Predicate<Chain> chainFilter) throws IOException {
+    public List<Structure> readPDBFile(String path, Predicate<Chain> chainFilter) throws IOException {
         var structure = reader.getStructure(path);
 
         var filtered = new StructureImpl();
@@ -35,13 +36,15 @@ public class BioJavaController {
                 filtered.addChain(chain);
             }
         }
-        return filtered;
+        return null;
     }
 
-    public void writePDBFile(Structure structure, String outputPath) throws IOException {
-        String pdbContent = structure.toPDB();
-        try (FileWriter writer = new FileWriter(outputPath)) {
-            writer.write(pdbContent);
+    public void writePDBFile(List<Structure> structure, String outputPath) throws IOException {
+        for (Structure s : structure) {
+            String pdbContent = s.toPDB();
+            try (FileWriter writer = new FileWriter(outputPath)) {
+                writer.write(pdbContent);
+            }
         }
     }
 
@@ -67,15 +70,14 @@ public class BioJavaController {
         };
     }
 
-/* EXAMPLE USAGE
+/*
     public static void main(String[] args) throws IOException {
         var controller = BioJavaController.getInstance();
         var filter = controller.getDefaultChainFilter("A;B");
 
-        var filtered = controller.readPDBFile("/to/4D00.pdb", filter);
-        controller.writePDBFile(filtered, "/to/4D00_filtered.pdb");
+        var filtered = controller.readPDBFile("/Users/pierohierro/Downloads/6PRV.pdb", filter);
+        controller.writePDBFile(filtered, "/Users/pierohierro/Downloads/6PRV_filtered.pdb");
     }
-
- */
+*/
 
 }
