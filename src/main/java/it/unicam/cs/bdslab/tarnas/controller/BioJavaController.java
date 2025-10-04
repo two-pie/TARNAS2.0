@@ -63,12 +63,18 @@ public class BioJavaController {
         return idFilter.and(getRNAFilter());
     }
 
+    public String downloadPDB(String id) throws IOException {
+        return null;
+    }
+
     private Predicate<Chain> getRNAFilter() {
         return chain -> {
             String seq = chain.getAtomSequence().toUpperCase();
             return seq.matches(".*U.*"); // only RNA residues
         };
     }
+
+
 
 /*
     public static void main(String[] args) throws IOException {
