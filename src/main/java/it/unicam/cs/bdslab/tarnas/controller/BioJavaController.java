@@ -46,7 +46,7 @@ public class BioJavaController {
         for (Structure s : structures) {
             String chainId = s.getChains().get(0).getId();
 
-            String filePath = baseFilePath + chainId + ".pdb";
+            String filePath = baseFilePath + "_" + chainId + ".pdb";
 
             String pdbContent = s.toPDB();
             try (FileWriter writer = new FileWriter(filePath)) {
