@@ -168,14 +168,14 @@ public class DockerController {
 
                 // Output under /data/preprocessed/<basename>_filtered.pdb
                 String baseName = stripExtension(pdbHostPath.getFileName().toString());
-                Path outHostPath = preprocessedHost.resolve(baseName + "_filtered.pdb");
+                Path outHostPath = preprocessedHost.resolve(baseName);
 
                 try {
                     var controller = BioJavaController.getInstance();
                     var filter = controller.getDefaultChainFilter(chainFilter);
 
-                    var filtered = controller.readPDBFile(pdbHostPath.toAbsolutePath().toString(), filter);
-                    controller.writePDBFile(filtered, outHostPath.toAbsolutePath().toString());
+                    var filteredFiles = controller.readPDBFile(pdbHostPath.toAbsolutePath().toString(), filter);
+                    controller.writeStructuresWithSingleChain(filteredFiles, outHostPath.toAbsolutePath().toString());
 
                     logger.info("Wrote filtered PDB: {}" + outHostPath);
                 } catch (Exception e) {

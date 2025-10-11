@@ -7,6 +7,7 @@ import org.biojava.nbio.structure.io.PDBFileReader;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -26,23 +27,29 @@ public class BioJavaController {
     }
 
     public List<Structure> readPDBFile(String path, Predicate<Chain> chainFilter) throws IOException {
-        var structure = reader.getStructure(path);
+        Structure structure = reader.getStructure(path);
 
-        var filtered = new StructureImpl();
-
+        List<Structure> singleChainStructures = new ArrayList<>();
 
         for (Chain chain : structure.getChains()) {
             if (chainFilter.test(chain)) {
-                filtered.addChain(chain);
+                StructureImpl singleChainStructure = new StructureImpl();
+                singleChainStructure.addChain(chain);
+                singleChainStructures.add(singleChainStructure);
             }
         }
-        return null;
+
+        return singleChainStructures;
     }
 
-    public void writePDBFile(List<Structure> structure, String outputPath) throws IOException {
-        for (Structure s : structure) {
+    public void writeStructuresWithSingleChain(List<Structure> structures, String baseFilePath) throws IOException {
+        for (Structure s : structures) {
+            String chainId = s.getChains().get(0).getId();
+
+            String filePath = baseFilePath + chainId + ".pdb";
+
             String pdbContent = s.toPDB();
-            try (FileWriter writer = new FileWriter(outputPath)) {
+            try (FileWriter writer = new FileWriter(filePath)) {
                 writer.write(pdbContent);
             }
         }
