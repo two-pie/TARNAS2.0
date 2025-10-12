@@ -79,7 +79,7 @@ public class BioJavaController {
         };
     }
 
-    public void downloadPDB(String pdbId, String outputFolderPath) throws StructureException, IOException {
+    public Path downloadPDB(String pdbId, String outputFolderPath) throws StructureException, IOException {
         pdbId = pdbId.toUpperCase();
         // Fetch the structure from the web using the ID.
         Structure structure = StructureIO.getStructure(pdbId);
@@ -94,7 +94,7 @@ public class BioJavaController {
 
         // Save
         Path outputPath = Paths.get(outputFolderPath, pdbId + extension);
-        Files.write(outputPath, content.getBytes());
+        return Files.write(outputPath, content.getBytes());
     }
 
 /*
@@ -108,3 +108,4 @@ public class BioJavaController {
 */
 
 }
+

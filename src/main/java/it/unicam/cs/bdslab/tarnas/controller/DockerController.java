@@ -8,6 +8,7 @@ import com.github.dockerjava.api.model.*;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.core.command.ExecStartResultCallback;
+import org.biojava.nbio.structure.StructureException;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -19,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 // TODO: add Biojava interaction and check if the updated tool functions work with " + this.preprocessingPath + " changes
 
@@ -87,12 +89,12 @@ public class DockerController {
         // --- process exactly ONE CSV in sharedFolder ---
         Path csv = pickSingleCsv(sharedFolder);
         if (csv == null) {
-            logger.info("No CSV file found in {} — nothing to process." + sharedFolder);
+            logger.info("No CSV file found in " + sharedFolder + " — nothing to process.");
             return 0;
         }
-        logger.info("Using CSV: {}" + csv.getFileName());
+        logger.info("Using CSV: " + csv.getFileName());
 
-        processCsvAndFilterPdbs(csv, sharedFolder, containerSharedFolder);
+        processCsvAndFilterPdbs(csv, sharedFolder);
 
         return 1;
     }
@@ -109,7 +111,7 @@ public class DockerController {
                 .exec(new ExecStartResultCallback(System.out, System.err))
                 .awaitCompletion();
 
-        logger.info("Ensured directory exists in container: {}" + dir);
+        logger.info("Ensured directory exists in container: " + dir);
     }
 
     /**
@@ -126,7 +128,7 @@ public class DockerController {
 
         csvs.sort(Comparator.comparing(p -> p.getFileName().toString()));
         if (csvs.size() > 1)
-            logger.severe("Multiple CSV files found in {} — using the first: {}" + sharedFolder + csvs.get(0).getFileName());
+            logger.severe("Multiple CSV files found in " + sharedFolder + " — using the first: " + csvs.get(0).getFileName());
         return csvs.get(0);
     }
 
@@ -135,9 +137,10 @@ public class DockerController {
      * CSV: col0 = pdbPath (relative to /data), col1 = chainFilter (e.g., "A;B").
      * Output: /data/preprocessed/<basename>_filtered.pdb
      */
-    private void processCsvAndFilterPdbs(Path csvFile, Path sharedFolder, String containerSharedFolder) throws IOException {
+    private void processCsvAndFilterPdbs(Path csvFile, Path sharedFolder) throws IOException {
         Path preprocessedHost = sharedFolder.resolve("preprocessed");
-
+        var bioJavaController = BioJavaController.getInstance();
+        Set<String> csvPaths = new HashSet<>();
         try (BufferedReader br = Files.newBufferedReader(csvFile, StandardCharsets.UTF_8)) {
             String line;
             boolean headerSkipped = false;
@@ -156,31 +159,50 @@ public class DockerController {
                     continue;
                 }
 
-                String pdbRelPath = cols[0].trim();   // path relative to /data
+                String pdbID = cols[0].trim();   // path relative to /data
                 String chainFilter = cols[1].trim();  // e.g., "A;B"
 
                 // Host path for reading (bind of /data)
-                Path pdbHostPath = sharedFolder.resolve(pdbRelPath).normalize();
+                Path pdbHostPath = sharedFolder.resolve(pdbID + ".pdb");
+                csvPaths.add(pdbID);
                 if (!Files.exists(pdbHostPath)) {
-                    logger.severe("PDB not found on host: {} (row: {})" + pdbHostPath + line);
-                    continue;
+                    logger.severe("PDB not found on host: " + pdbHostPath + pdbID);
+                    logger.info("Try to download the PDB file using PDB ID");
+                    try {
+                        pdbHostPath = bioJavaController.downloadPDB(pdbID, String.valueOf(sharedFolder));
+                    } catch (StructureException e) {
+                        logger.severe("PDB ID not valid");
+                        continue;
+                    }
                 }
-
-                // Output under /data/preprocessed/<basename>_filtered.pdb
-                String baseName = stripExtension(pdbHostPath.getFileName().toString());
-                Path outHostPath = preprocessedHost.resolve(baseName);
-
                 try {
-                    var controller = BioJavaController.getInstance();
-                    var filter = controller.getDefaultChainFilter(chainFilter);
-
-                    var filteredFiles = controller.readPDBFile(pdbHostPath.toAbsolutePath().toString(), filter);
-                    controller.writeStructuresWithSingleChain(filteredFiles, outHostPath.toAbsolutePath().toString());
-
-                    logger.info("Wrote filtered PDB: {}" + outHostPath);
+                    var filter = bioJavaController.getDefaultChainFilter(chainFilter);
+                    var filteredFiles = bioJavaController.readPDBFile(pdbHostPath.toAbsolutePath().toString(), filter);
+                    bioJavaController.writeStructuresWithSingleChain(filteredFiles, preprocessedHost.resolve(pdbID).toAbsolutePath().toString());
+                    logger.info("Wrote filtered PDB: " + pdbHostPath);
                 } catch (Exception e) {
-                    logger.severe("Failed processing row: {} — {}" + line + e.getMessage() + e);
+                    logger.severe("Failed processing row: " + line + " - " + e.getMessage() + " " + e);
                 }
+            }
+            // read each file under shared folder
+            // apply a filter to exclude all the files belong to the csvPaths set
+            // copy the remaining files
+            try {
+                Files.list(sharedFolder)
+                        .filter(Files::isRegularFile)
+                        .map(Path::toAbsolutePath)
+                        .filter(p -> p.toString().endsWith(".pdb"))
+                        .filter(p -> !csvPaths.contains(p.getFileName().toString().substring(0, p.getFileName().toString().lastIndexOf("."))))
+                        .forEach(p -> {
+                            logger.info("Reading file: " + p);
+                            try {
+                                Files.copy(p, preprocessedHost.resolve(p.getFileName()));
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        });
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -192,22 +214,7 @@ public class DockerController {
 
     private static boolean looksLikeHeader(String line) {
         String lower = line.toLowerCase(Locale.ROOT);
-        return lower.contains("pdb") || lower.contains("path") || lower.contains("chain");
-    }
-
-    private static String stripExtension(String filename) {
-        int i = filename.lastIndexOf('.');
-        return i > 0 ? filename.substring(0, i) : filename;
-    }
-
-
-    private static String unixify(String relPath) {
-        return relPath.replace('\\', '/');
-    }
-
-    private static String joinUnix(String a, String b) {
-        if (a.endsWith("/")) return a + b;
-        return a + "/" + b;
+        return lower.contains("id") || lower.contains("chain");
     }
 
     public int buildxDockerContainerBy(File dockerFile, String imageName, String imageTag, String containerName, Path sharedFolder) throws IOException, InterruptedException {
@@ -352,7 +359,7 @@ public class DockerController {
                         Arrays.asList(Optional.ofNullable(c.getNames()).orElse(new String[0])).contains(wanted)
                                 // or by ID prefix
                                 || c.getId().startsWith(nameOrId))
-                .map(com.github.dockerjava.api.model.Container::getId)
+                .map(Container::getId)
                 .findFirst()
                 .orElse(null);
     }
