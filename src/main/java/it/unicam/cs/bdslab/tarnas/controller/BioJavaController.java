@@ -1,12 +1,13 @@
 package it.unicam.cs.bdslab.tarnas.controller;
 
-import org.biojava.nbio.structure.Chain;
-import org.biojava.nbio.structure.Structure;
-import org.biojava.nbio.structure.StructureImpl;
+import org.biojava.nbio.structure.*;
 import org.biojava.nbio.structure.io.PDBFileReader;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -70,9 +71,6 @@ public class BioJavaController {
         return idFilter.and(getRNAFilter());
     }
 
-    public String downloadPDB(String id) throws IOException {
-        return null;
-    }
 
     private Predicate<Chain> getRNAFilter() {
         return chain -> {
@@ -81,7 +79,23 @@ public class BioJavaController {
         };
     }
 
+    public void downloadPDB(String pdbId, String outputFolderPath) throws StructureException, IOException {
+        pdbId = pdbId.toUpperCase();
+        // Fetch the structure from the web using the ID.
+        Structure structure = StructureIO.getStructure(pdbId);
 
+        // Check if it is possible to save it as PDB, otherwise save it as CIF
+        boolean requiresCif = structure.getChains().stream()
+                .flatMap(chain -> chain.getAtomGroups().stream())
+                .flatMap(group -> group.getAtoms().stream())
+                .anyMatch(atom -> atom.getPDBserial() > 99999);
+        String content = requiresCif ? structure.toMMCIF() : structure.toPDB();
+        String extension = requiresCif ? ".cif" : ".pdb";
+
+        // Save
+        Path outputPath = Paths.get(outputFolderPath, pdbId + extension);
+        Files.write(outputPath, content.getBytes());
+    }
 
 /*
     public static void main(String[] args) throws IOException {
