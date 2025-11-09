@@ -119,7 +119,7 @@ public class HomeController {
         logger.info("Exit add file");
     }
 
-    private void initDockerContainers(Path sharedDirectory) {
+    private void initDockerContainers(Path sharedFolder) {
         // Dialog with a Close button (we'll enable it at 100%)
         Alert loadingAlert = new Alert(Alert.AlertType.INFORMATION);
         loadingAlert.setTitle("Docker");
@@ -174,7 +174,7 @@ public class HomeController {
                 return dockerController.buildDockerContainerBy(
                         new File(dockerfileAllToolsPath),
                         dockerAllToolsImage, dockerAllToolsImageTag,
-                        dockerAllToolsContainer, sharedDirectory
+                        dockerAllToolsContainer, sharedFolder
                 );
             }
         };
@@ -185,7 +185,7 @@ public class HomeController {
                 return dockerController.buildxDockerContainerBy(
                         new File(dockerfileX3DNAPath),
                         dockerX3DNAImage, dockerX3DNAImageTag,
-                        dockerX3DNAContainer, sharedDirectory
+                        dockerX3DNAContainer
                 );
             }
         };

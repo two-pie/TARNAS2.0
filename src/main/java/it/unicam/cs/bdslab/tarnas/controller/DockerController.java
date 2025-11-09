@@ -9,23 +9,12 @@ import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.core.command.ExecStartResultCallback;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.*;
 import java.util.*;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
-// TODO: add Biojava interaction and check if the updated tool functions work with " + this.preprocessingPath + " changes
-
-// TODO: make some experiments with a csv file uploaded with the pdb files!
-
-// TODO: unmount volumes, remove generated containers after using buildx
 public class DockerController {
 
     public static final Logger logger = Logger.getLogger("it.unicam.cs.bdslab.tarnas.controller.DockerController");
@@ -37,6 +26,7 @@ public class DockerController {
     private final String preprocessingPath = "/data/preprocessed";
     private final String mappingsPath = "/data/mappings";
     private final String bundlesPath = "/data/bundles";
+    private Path sharedFolder;
 
     private DockerController() {
         // Setup Docker Client
@@ -45,6 +35,7 @@ public class DockerController {
     }
 
     public int buildDockerContainerBy(File dockerContext, String imageName, String imageTag, String containerName, Path sharedFolder) throws IOException, InterruptedException {
+        this.sharedFolder = sharedFolder;
         // Build the image
         List<Image> images = dockerClient.listImagesCmd().exec();
         boolean imageExists = false;
@@ -85,24 +76,23 @@ public class DockerController {
         logger.info("Container started: " + container.getId());
 
         // --- ensure /data/preprocessed inside the container (not on host explicitly) ---
-        makeDirInContainer(container.getId(), "/data/preprocessed");
+        makeDirInContainer(container.getId(), preprocessingPath);
 
         // mappings folder
-        makeDirInContainer(container.getId(), "/data/mappings");
+        makeDirInContainer(container.getId(), mappingsPath);
 
         // bundles folder
-        makeDirInContainer(container.getId(), "/data/bundles");
+        makeDirInContainer(container.getId(), bundlesPath);
 
         // --- process exactly ONE CSV in sharedFolder ---
-        Path csv = pickSingleCsv(sharedFolder);
+        Path csv = pickSingleCsv();
         if (csv == null) {
             logger.info("No CSV file found in " + sharedFolder + " — nothing to process.");
             return 0;
         }
         logger.info("Using CSV: " + csv.getFileName());
 
-        processCsvAndFilterPdbs(csv, sharedFolder);
-
+        processCsvAndFilterPdbs(csv);
         return 1;
     }
 
@@ -126,7 +116,7 @@ public class DockerController {
      * - If none: return null.
      * - If multiple: pick the first after sorting by filename, and log a warning.
      */
-    private Path pickSingleCsv(Path sharedFolder) throws IOException {
+    private Path pickSingleCsv() throws IOException {
         List<Path> csvs = new ArrayList<>();
         try (DirectoryStream<Path> ds = Files.newDirectoryStream(sharedFolder, "*.csv")) {
             for (Path p : ds) csvs.add(p);
@@ -144,7 +134,7 @@ public class DockerController {
      * CSV: col0 = pdbPath (relative to /data), col1 = chainFilter (e.g., "A;B").
      * Output: /data/preprocessed/<basename>_filtered.pdb
      */
-    private void processCsvAndFilterPdbs(Path csvFile, Path sharedFolder) throws IOException {
+    private void processCsvAndFilterPdbs(Path csvFile) throws IOException {
         Path preprocessedHost = sharedFolder.resolve("preprocessed");
         var bioJavaController = BioJavaController.getInstance();
         Set<String> csvPaths = new HashSet<>();
@@ -179,10 +169,8 @@ public class DockerController {
                         pdbHostPath = bioJavaController.downloadPDB(pdbID, String.valueOf(sharedFolder));
                         if (pdbHostPath.toString().endsWith("cif")) {
                             logger.info("CIF format recognized");
-                            // if cif -> if so, call BeEM
-                            this.beem(pdbHostPath.toString());
-                            // call methods to build mappings.csv and then move mappings and bundles
-                            //this.moveFiles();
+                            this.beem(pdbID + ".cif");
+                            this.moveFiles(pdbID);
                         }
                     } catch (Exception e) {
                         logger.severe("PDB ID not valid");
@@ -232,7 +220,7 @@ public class DockerController {
         return lower.contains("id") || lower.contains("chain");
     }
 
-    public int buildxDockerContainerBy(File dockerFile, String imageName, String imageTag, String containerName, Path sharedFolder) throws IOException, InterruptedException {
+    public int buildxDockerContainerBy(File dockerFile, String imageName, String imageTag, String containerName) throws IOException, InterruptedException {
         File contextDir = dockerFile.getParentFile();
 
         // Check if the image already exists
@@ -505,35 +493,82 @@ public class DockerController {
                 .inheritIO().start().waitFor();
     }
 
-    public void beem(String cifFilePath) throws InterruptedException {
-        logger.info("USING BeEM to convert " + cifFilePath + " to PDB");
+    public void beem(String cifFile) throws InterruptedException {
+        logger.info("USING BeEM to convert " + cifFile + " to PDB");
         // call BeEM
-        String shellCmd = "./home/BeEM/BeEM " + cifFilePath;
+        String shellCmd = "cd /data && /home/BeEM/BeEM" + " " + cifFile;
 
         // Create exec command
         ExecCreateCmdResponse execCreateCmdResponse = dockerClient.execCreateCmd(container.getId()).withAttachStdout(true).withAttachStderr(true).withCmd("bash", "-c", shellCmd).exec();
 
         // Start and attach to output
         dockerClient.execStartCmd(execCreateCmdResponse.getId()).exec(new ExecStartResultCallback(System.out, System.err)).awaitCompletion();
-        this.buildMappingsCSV();
+        //this.buildMappingsCSV();
     }
 
-    /**
-     * Builds the csv file from the cif mapping file generated by BeEM.
-     *
-     * @param cifMappingFilePath
-     */
-    private void buildMappingsCSV(String cifMappingFilePath) {
-
-    }
 
     /**
      * Takes the PDB ID related to the CIF file and saves mappings and bundles under mappingsPath and bundlesPath.
      *
      * @param pdbID
      */
-    private void moveFiles(String pdbID) {
+    private void moveFiles(String pdbID) throws Exception {
+        var originalMappingPath = sharedFolder.resolve(pdbID.toLowerCase() + "-chain-id-mapping.txt");
+        var formattedMappingPath = originalMappingPath.getParent().resolve(pdbID + "-pdb-mapping.csv");
+        // reformat mapping
+        var bundles = reformatCSV(originalMappingPath, formattedMappingPath);
+        // move bundles using mapping
+        for (var b : bundles) {
+            var target = sharedFolder.resolve("bundles").resolve(b.getFileName());
+            Files.move(b, target, StandardCopyOption.REPLACE_EXISTING);
+        }
+        // move mapping
+        Files.move(formattedMappingPath, sharedFolder.resolve("mappings").resolve(formattedMappingPath.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+    }
 
+    private Set<Path> reformatCSV(Path inputPath, Path outputPath) {
+        try (BufferedReader reader = Files.newBufferedReader(inputPath);
+             BufferedWriter writer = Files.newBufferedWriter(outputPath)) {
+
+            writer.write("File,New_chain_ID,Original_chain_ID");
+            writer.newLine();
+
+            String currentFile = null;
+            var bundlePaths = new HashSet<Path>();
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+
+                // Skip header and empty lines
+                if (line.isEmpty() || line.contains("New chain ID")) {
+                    continue;
+                }
+
+                // Detect new PDB section (e.g., "3j6b-pdb-bundle1.pdb:")
+                if (line.contains(".pdb:")) {
+                    currentFile = line.substring(0, line.length() - 1).trim();
+                    bundlePaths.add(inputPath.getParent().resolve(currentFile));
+                    continue;
+                }
+
+                // Expect two columns separated by spaces
+                String[] parts = line.split("\\s+");
+                if (parts.length == 2) {
+                    writer.write(String.format("%s,%s,%s", currentFile, parts[0], parts[1]));
+                    writer.newLine();
+                }
+            }
+
+            Files.delete(inputPath);
+
+            System.out.println("Reformatted CSV written to: " + outputPath.toAbsolutePath());
+            System.out.println("Deleted original mapping: " + inputPath.toAbsolutePath());
+            return bundlePaths;
+        } catch (IOException e) {
+            System.err.println("Error processing " + inputPath + ": " + e.getMessage());
+            return null;
+        }
     }
 
     public static DockerController getInstance() {
