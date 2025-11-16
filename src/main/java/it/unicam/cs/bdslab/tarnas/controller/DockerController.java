@@ -8,6 +8,9 @@ import com.github.dockerjava.api.model.*;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.core.command.ExecStartResultCallback;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
+import org.biojava.nbio.structure.Structure;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -27,6 +30,7 @@ public class DockerController {
     private final String mappingsPath = "/data/mappings";
     private final String bundlesPath = "/data/bundles";
     private Path sharedFolder;
+    private final BioJavaController bioJavaController = BioJavaController.getInstance();
 
     private DockerController() {
         // Setup Docker Client
@@ -135,9 +139,7 @@ public class DockerController {
      * Output: /data/preprocessed/<basename>_filtered.pdb
      */
     private void processCsvAndFilterPdbs(Path csvFile) throws IOException {
-        Path preprocessedHost = sharedFolder.resolve("preprocessed");
-        var bioJavaController = BioJavaController.getInstance();
-        Set<String> csvPaths = new HashSet<>();
+        var preprocessedFolder = sharedFolder.resolve("preprocessed");
         try (BufferedReader br = Files.newBufferedReader(csvFile, StandardCharsets.UTF_8)) {
             String line;
             boolean headerSkipped = false;
@@ -157,55 +159,37 @@ public class DockerController {
                 }
 
                 String pdbID = cols[0].trim();   // path relative to /data
-                String chainFilter = cols[1].trim();  // e.g., "A;B"
+                String chain = cols[1].trim();  // e.g., "A;B"
 
                 // Host path for reading (bind of /data)
-                Path pdbHostPath = sharedFolder.resolve(pdbID + ".pdb");
-                csvPaths.add(pdbID);
-                if (!Files.exists(pdbHostPath)) {
-                    logger.severe("PDB: " + pdbID + " not found on host: " + pdbHostPath);
+                Path fileToFilter = sharedFolder.resolve(pdbID + ".pdb");
+                var isPDB = true;
+
+                if (!Files.exists(fileToFilter)) {
                     logger.info("Try to download the PDB file using PDB ID");
                     try {
-                        pdbHostPath = bioJavaController.downloadPDB(pdbID, String.valueOf(sharedFolder));
-                        if (pdbHostPath.toString().endsWith("cif")) {
+                        fileToFilter = bioJavaController.downloadPDB(pdbID, String.valueOf(sharedFolder));
+                        if (fileToFilter.toString().endsWith("cif")) {
                             logger.info("CIF format recognized");
+                            isPDB = false;
                             this.beem(pdbID + ".cif");
                             this.moveFiles(pdbID);
                         }
                     } catch (Exception e) {
-                        logger.severe("PDB ID not valid");
                         logger.severe("ERROR: " + e);
                         continue;
                     }
                 }
+                // preprocessing
                 try {
-                    var filter = bioJavaController.getDefaultChainFilter(chainFilter);
-                    var filteredFiles = bioJavaController.readPDBFile(pdbHostPath.toAbsolutePath().toString(), filter);
-                    bioJavaController.writeStructuresWithSingleChain(filteredFiles, preprocessedHost.resolve(pdbID).toAbsolutePath().toString());
-                    logger.info("Wrote filtered PDB: " + pdbHostPath);
+                    if (isPDB) {
+                        filterPDB(chain, pdbID, preprocessedFolder, fileToFilter);
+                    } else {
+                        filterCIF(chain, pdbID, preprocessedFolder);
+                    }
                 } catch (Exception e) {
                     logger.severe("Failed processing row: " + line + " - " + e.getMessage() + " " + e);
                 }
-            }
-            // read each file under shared folder
-            // apply a filter to exclude all the files belong to the csvPaths set
-            // copy the remaining files
-            try {
-                Files.list(sharedFolder)
-                        .filter(Files::isRegularFile)
-                        .map(Path::toAbsolutePath)
-                        .filter(p -> p.toString().endsWith(".pdb"))
-                        .filter(p -> !csvPaths.contains(p.getFileName().toString().substring(0, p.getFileName().toString().lastIndexOf("."))))
-                        .forEach(p -> {
-                            logger.info("Reading file: " + p);
-                            try {
-                                Files.copy(p, preprocessedHost.resolve(p.getFileName()));
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
-                        });
-            } catch (IOException e) {
-                e.printStackTrace();
             }
         }
     }
@@ -574,5 +558,84 @@ public class DockerController {
     public static DockerController getInstance() {
         if (instance == null) instance = new DockerController();
         return instance;
+    }
+
+
+    private void filterPDB(String chain, String pdbID, Path preprocessedFolder, Path src) throws Exception {
+        var filteredFiles = chain.equals("*")
+                ? bioJavaController.filterByStar(src)
+                : bioJavaController.filterById(src, chain);
+
+        for (var f : filteredFiles) {
+            save(f, preprocessedFolder, pdbID);
+        }
+    }
+
+    private void filterCIF(String chain, String pdbID, Path preprocessedFolder) throws Exception {
+        var mapping = sharedFolder.resolve("mappings").resolve(pdbID + "-pdb-mapping.csv");
+        var bundles = sharedFolder.resolve("bundles");
+
+        try (Reader reader = Files.newBufferedReader(mapping)) {
+            var format = CSVFormat.DEFAULT.builder()
+                    .setHeader()
+                    .setSkipHeaderRecord(true)
+                    .build();
+
+            var records = format.parse(reader);
+
+            var newChainIds = new HashMap<String, String>();
+            var originalChainIds = new HashMap<String, String>();
+
+            for (var r : records) {
+                var file = r.get("File");
+                var newChainId = r.get("New_chain_ID");
+                var originalChainId = r.get("Original_chain_ID");
+
+                // skip rows not matching the specified chain (unless '*' is used)
+                if (!chain.equals("*") && !chain.contains(originalChainId)) {
+                    continue;
+                }
+
+                // append newChainId with semicolon
+                newChainIds.merge(file, newChainId, (oldVal, newVal) -> oldVal + ";" + newVal);
+
+                // store mapping from new to original chain
+                originalChainIds.put(newChainId, originalChainId);
+            }
+
+            // Process each file
+            for (var entry : newChainIds.entrySet()) {
+                var bundle = entry.getKey();
+                var newChains = entry.getValue();
+
+                var filteredFiles = bioJavaController.filterById(bundles.resolve(bundle), newChains);
+
+                for (var f : filteredFiles) {
+                    save(f, preprocessedFolder, pdbID, originalChainIds);
+                }
+            }
+        }
+    }
+
+    private void save(Structure f, Path preprocessedFolder, String pdbID) throws Exception {
+        var chainId = f.getChains().get(0).getId();
+        var dst = preprocessedFolder.resolve(pdbID
+                + "_"
+                + chainId
+                + ".pdb");
+        bioJavaController.save(f, dst);
+        logger.info("Wrote filtered PDB: " + dst);
+    }
+
+    private void save(Structure f, Path preprocessedFolder, String pdbID, Map<String, String> originalChainIds) throws Exception {
+        var newChainId = f.getChains().get(0).getId();
+        var originalChainId = originalChainIds.get(newChainId);
+        var dst = preprocessedFolder.resolve(pdbID
+                + "_"
+                + originalChainId
+                + "_"
+                + newChainId);
+        bioJavaController.save(f, dst);
+        logger.info("Wrote filtered PDB: " + dst);
     }
 }

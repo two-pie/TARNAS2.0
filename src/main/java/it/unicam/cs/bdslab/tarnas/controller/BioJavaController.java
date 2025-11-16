@@ -8,10 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 import java.util.function.Predicate;
 
 public class BioJavaController {
@@ -27,56 +24,41 @@ public class BioJavaController {
         return instance;
     }
 
-    public List<Structure> readPDBFile(String path, Predicate<Chain> chainFilter) throws IOException {
-        Structure structure = reader.getStructure(path);
-
-        List<Structure> singleChainStructures = new ArrayList<>();
+    public List<Structure> filterById(Path path, String chainId) throws IOException {
+        var structure = reader.getStructure(path.toFile());
+        var filter = getFilter(chainId);
+        var structures = new ArrayList<Structure>();
 
         for (Chain chain : structure.getChains()) {
-            if (chainFilter.test(chain)) {
+            if (filter.test(chain)) {
                 StructureImpl singleChainStructure = new StructureImpl();
                 singleChainStructure.addChain(chain);
-                singleChainStructures.add(singleChainStructure);
+                structures.add(singleChainStructure);
             }
         }
-
-        return singleChainStructures;
+        return structures;
     }
 
-    public void writeStructuresWithSingleChain(List<Structure> structures, String baseFilePath) throws IOException {
-        for (Structure s : structures) {
-            String chainId = s.getChains().get(0).getId();
+    public List<Structure> filterByStar(Path path) throws IOException {
+        var structure = reader.getStructure(path.toFile());
+        var filter = getFilter("*");
 
-            String filePath = baseFilePath + "_" + chainId + ".pdb";
-
-            String pdbContent = s.toPDB();
-            try (FileWriter writer = new FileWriter(filePath)) {
-                writer.write(pdbContent);
+        var structures = new ArrayList<Structure>();
+        for (Chain chain : structure.getChains()) {
+            if (filter.test(chain)) {
+                StructureImpl singleChainStructure = new StructureImpl();
+                singleChainStructure.addChain(chain);
+                structures.add(singleChainStructure);
             }
         }
+        return structures;
     }
 
-    public Predicate<Chain> getDefaultChainFilter(String allowedIdsStr) {
-        Predicate<Chain> idFilter;
-        // accept all ids
-        if (allowedIdsStr.equals("*")) {
-            idFilter = chain -> true; // accept all IDs
+    public void save(Structure structure, Path dst) throws IOException {
+        String pdbContent = structure.toPDB();
+        try (FileWriter writer = new FileWriter(dst.toFile())) {
+            writer.write(pdbContent);
         }
-        // accept only specified ids
-        else {
-            var allowedIds = new HashSet<>(Arrays.asList(allowedIdsStr.split(";")));
-            idFilter = chain -> allowedIds.contains(chain.getId());
-        }
-        // combine id filter with rna filter
-        return idFilter.and(getRNAFilter());
-    }
-
-
-    private Predicate<Chain> getRNAFilter() {
-        return chain -> {
-            String seq = chain.getAtomSequence().toUpperCase();
-            return seq.matches(".*U.*"); // only RNA residues
-        };
     }
 
     public Path downloadPDB(String pdbId, String outputFolderPath) throws StructureException, IOException {
@@ -97,15 +79,26 @@ public class BioJavaController {
         return Files.write(outputPath, content.getBytes());
     }
 
-/*
-    public static void main(String[] args) throws IOException {
-        var controller = BioJavaController.getInstance();
-        var filter = controller.getDefaultChainFilter("A;B");
-
-        var filtered = controller.readPDBFile("/Users/pierohierro/Downloads/6PRV.pdb", filter);
-        controller.writePDBFile(filtered, "/Users/pierohierro/Downloads/6PRV_filtered.pdb");
+    private Predicate<Chain> getFilter(String allowedIds) {
+        Predicate<Chain> idFilter;
+        // accept all ids
+        if (allowedIds.equals("*"))
+            idFilter = chain -> true; // accept all IDs
+            // accept only specified id
+        else {
+            Set<String> allowedSet = new HashSet<>(List.of(allowedIds.split(";")));
+            idFilter = chain -> allowedSet.contains(chain.getId());
+        }
+        // combine id filter with rna filter
+        return idFilter.and(getRNAFilter());
     }
-*/
+
+    private Predicate<Chain> getRNAFilter() {
+        return chain -> {
+            String seq = chain.getAtomSequence().toUpperCase();
+            return seq.matches(".*U.*"); // only RNA residues
+        };
+    }
 
 }
 
