@@ -634,7 +634,8 @@ public class DockerController {
                 + "_"
                 + originalChainId
                 + "_"
-                + newChainId);
+                + newChainId
+                + ".pdb");
         bioJavaController.save(f, dst);
         logger.info("Wrote filtered PDB: " + dst);
     }
