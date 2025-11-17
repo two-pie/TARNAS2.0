@@ -18,9 +18,7 @@ RUN apt-get update && apt-get install -y \
     && pip install --upgrade pip
 
 # Clone and install tools
-RUN git clone https://github.com/tzok/rnapolis-py.git && \
-    pip install -r rnapolis-py/requirements.txt && \
-    pip install ./rnapolis-py && \
+RUN pip install RNApolis &&\
     git clone https://github.com/BGSU-RNA/fr3d-python.git && \
     cd fr3d-python && python -m pip install . && cd .. && \
     pip install mmcif-pdbx && \

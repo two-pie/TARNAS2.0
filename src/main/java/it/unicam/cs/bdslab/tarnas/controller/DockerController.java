@@ -9,12 +9,12 @@ import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.core.command.ExecStartResultCallback;
 import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVRecord;
 import org.biojava.nbio.structure.Structure;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.logging.Logger;
 
@@ -187,11 +187,16 @@ public class DockerController {
                     } else {
                         filterCIF(chain, pdbID, preprocessedFolder);
                     }
+
                 } catch (Exception e) {
                     logger.severe("Failed processing row: " + line + " - " + e.getMessage() + " " + e);
                 }
             }
         }
+
+        // DELETE bundles and mappings directories after processing
+        deleteDirectoryRecursively(sharedFolder.resolve("bundles"));
+        deleteDirectoryRecursively(sharedFolder.resolve("mappings"));
     }
 
     private static String[] parseRow(String line) {
@@ -638,5 +643,24 @@ public class DockerController {
                 + ".pdb");
         bioJavaController.save(f, dst);
         logger.info("Wrote filtered PDB: " + dst);
+    }
+
+    private void deleteDirectoryRecursively(Path dir) throws IOException {
+        if (Files.exists(dir)) {
+            Files.walkFileTree(dir, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+            logger.info("Deleted folder: " + dir);
+        }
     }
 }
