@@ -8,6 +8,8 @@ import com.github.dockerjava.api.model.*;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.core.command.ExecStartResultCallback;
+import com.github.dockerjava.transport.DockerHttpClient;
+import com.github.dockerjava.zerodep.ZerodepDockerHttpClient;
 import org.apache.commons.csv.CSVFormat;
 import org.biojava.nbio.structure.Structure;
 
@@ -33,9 +35,16 @@ public class DockerController {
     private final BioJavaController bioJavaController = BioJavaController.getInstance();
 
     private DockerController() {
-        // Setup Docker Client
-        DefaultDockerClientConfig.Builder config = DefaultDockerClientConfig.createDefaultConfigBuilder();
-        dockerClient = DockerClientBuilder.getInstance(config).build();
+        DefaultDockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder().build();
+
+        DockerHttpClient httpClient = new ZerodepDockerHttpClient.Builder()
+                .dockerHost(config.getDockerHost())
+                .sslConfig(config.getSSLConfig())
+                .build();
+
+        dockerClient = DockerClientBuilder.getInstance(config)
+                .withDockerHttpClient(httpClient)
+                .build();
     }
 
     public int buildDockerContainerBy(File dockerContext, String imageName, String imageTag, String containerName, Path sharedFolder) throws IOException, InterruptedException {
