@@ -56,9 +56,14 @@ public class BioJavaController {
 
     public void save(Structure structure, Path dst) throws IOException {
         String pdbContent = structure.toPDB();
-        try (FileWriter writer = new FileWriter(dst.toFile())) {
+        String cifContent = structure.toMMCIF();
+        try (FileWriter writer = new FileWriter(dst.resolveSibling(dst.getFileName()+".pdb").toFile())) {
             writer.write(pdbContent);
         }
+        try (FileWriter writer = new FileWriter(dst.resolveSibling(dst.getFileName()+".cif").toFile())) {
+            writer.write(cifContent);
+        }
+
     }
 
     public Path downloadPDB(String pdbId, String outputFolderPath) throws StructureException, IOException {

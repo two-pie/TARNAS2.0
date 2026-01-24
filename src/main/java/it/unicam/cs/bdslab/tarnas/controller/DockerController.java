@@ -455,17 +455,15 @@ public class DockerController {
         dockerClient.execStartCmd(execCreateCmdResponse.getId()).exec(new ExecStartResultCallback(System.out, System.err)).awaitCompletion();
     }
 
-    // TODO: check if replacing data with " + this.preprocessingPath + " or not
     public void fr3d() throws InterruptedException {
         String shellCmd =
-                "mkdir -p /data/fr3d-output && " +
-                        "cd /home/fr3d-python/fr3d/classifiers/ && " +
-                        "for file in /data/*.pdb; do " +
-                        "filename=$(basename \"$file\" .pdb); " +
-                        "python NA_pairwise_interactions.py -o /data/fr3d-output/ \"/data/${filename}.cif\"; " +
-                        "done && " +
-                        "rm -f /data/*.gz && " +
-                        "rm -rf \"/home/fr3d-python/fr3d/classifiers/C:\\\\Users\\\\zirbel\\\\Documents\\\\FR3D\\\\PDBFiles\\\\\"";
+                "cd /home/fr3d-python/fr3d/classifiers/ && " +
+                        "for file in " + this.preprocessingPath + "/*.cif; do " +
+                        "filename=$(basename \"$file\" .cif); " +
+                        "python NA_pairwise_interactions.py -o /data/fr3d-output/ -f ebi_json --input " + this.preprocessingPath + " ${filename}.cif; " +
+                        "mv /data/fr3d-output/${filename}_*_basepair.json /data/fr3d-output/${filename}_basepair.json; " +
+                        "done";
+
         // Create exec command
         ExecCreateCmdResponse execCreateCmdResponse = dockerClient.execCreateCmd(container.getId()).withAttachStdout(true).withAttachStderr(true).withCmd("bash", "-c", shellCmd).exec();
 
@@ -632,26 +630,28 @@ public class DockerController {
     }
 
     private void save(Structure f, Path preprocessedFolder, String pdbID) throws Exception {
+        // this save is used when a PDB file is translated into its chains
+        // e.g. 4PLX.pdb -> 4PLX_A.pdb , 4PLX_B.pdb && 4PLX_A.cif , 4PLX_B.cif
         var chainId = f.getChains().get(0).getId();
         var dst = preprocessedFolder.resolve(pdbID
                 + "_"
-                + chainId
-                + ".pdb");
+                + chainId);
         bioJavaController.save(f, dst);
-        logger.info("Wrote filtered PDB: " + dst);
+        logger.info("Wrote filtered PDB and CIF: " + dst);
     }
 
     private void save(Structure f, Path preprocessedFolder, String pdbID, Map<String, String> originalChainIds) throws Exception {
+        // this save is used when a CIF file is translated into its chains
+        // e.g. 4PLX.cif -> 4PLX_A.pdb , 4PLX_B.pdb && 4PLX_A.cif , 4PLX_B.cif
         var newChainId = f.getChains().get(0).getId();
         var originalChainId = originalChainIds.get(newChainId);
         var dst = preprocessedFolder.resolve(pdbID
                 + "_"
                 + originalChainId
                 + "_"
-                + newChainId
-                + ".pdb");
+                + newChainId);
         bioJavaController.save(f, dst);
-        logger.info("Wrote filtered PDB: " + dst);
+        logger.info("Wrote filtered PDB and CIF: " + dst);
     }
 
     private void deleteDirectoryRecursively(Path dir) throws IOException {

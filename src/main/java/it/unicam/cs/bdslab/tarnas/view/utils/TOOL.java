@@ -1,7 +1,5 @@
 package it.unicam.cs.bdslab.tarnas.view.utils;
 
-import java.util.ArrayList;
-import java.util.List;
 
 public enum TOOL {
     RNAVIEW("RNAVIEW"),
@@ -9,7 +7,8 @@ public enum TOOL {
     BARNABA("BARNABA"),
     BPNET("BPNET"),
     FR3D("FR3D"),
-    X3DNA("X3DNA");
+    X3DNA("X3DNA"),
+    MC_ANNOTATE("MC_ANNOTATE");
 
     private final String name;
 
