@@ -306,9 +306,14 @@ public class HomeController {
                 X3DNA, () -> {
                     try {
                         this.dockerController.x3dnaBy(dockerX3DNAContainer);
-                    } catch (InterruptedException e) {
+                    } catch (InterruptedException | IOException e) {
                         throw new RuntimeException(e);
-                    } catch (IOException e) {
+                    }
+                },
+                MC_ANNOTATE, () -> {
+                    try {
+                        this.dockerController.mcAnnotate();
+                    } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
                 }

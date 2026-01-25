@@ -1,6 +1,7 @@
 package it.unicam.cs.bdslab.tarnas.controller;
 
 import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.BuildImageResultCallback;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.ExecCreateCmdResponse;
@@ -487,6 +488,19 @@ public class DockerController {
 
         new ProcessBuilder("docker", "exec", containerName, "bash", "-c", shellCmd)
                 .inheritIO().start().waitFor();
+    }
+
+    public void mcAnnotate() throws InterruptedException {
+        String shellCmd =
+                "mkdir -p /data/mc-annotate-output && " +
+                        "for file in " + this.preprocessingPath + "/*.pdb; do " +
+                        "filename=$(basename \"$file\"); " +
+                        "/home/MC-Annotate/MC-Annotate \"$file\" > /data/mc-annotate-output/${filename%.*}.txt; " +
+                        "done";
+        // Create exec command
+        ExecCreateCmdResponse execCreateCmdResponse = dockerClient.execCreateCmd(container.getId()).withAttachStdout(true).withAttachStderr(true).withCmd("bash", "-c", shellCmd).exec();
+        // Start and attach to output
+        dockerClient.execStartCmd(execCreateCmdResponse.getId()).exec(new ExecStartResultCallback(System.out, System.err)).awaitCompletion();
     }
 
     public void beem(String cifFile) throws InterruptedException {

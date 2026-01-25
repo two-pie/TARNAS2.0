@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /home
 
 # Install system dependencies including Ruby first
-RUN apt-get update && apt-get install -y \
+RUN dpkg --add-architecture i386 && apt-get update && apt-get install -y \
     git \
     cmake \
     flex \
@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     python3-dev \
     ruby \
+    wget \
     && apt-get clean && rm -rf /var/lib/apt/lists/* \
     && pip install --upgrade pip
 
@@ -30,7 +31,10 @@ RUN pip install RNApolis &&\
     cd RNAView && make && cd .. && \
     git clone https://github.com/kad-ecoli/BeEM.git && \
     cd BeEM && \
-    g++ -O3 BeEM.cpp -o BeEM
+    g++ -O3 BeEM.cpp -o BeEM && cd .. && \
+    mkdir MC-Annotate && cd MC-Annotate && wget https://major.iric.ca/mc-tools/releases/MC-Annotate.zip \
+    && unzip MC-Annotate.zip && chmod +x MC-Annotate && cd ..
+
 
 # Set environment variables
 ENV NUCLEIC_ACID_DIR=/usr/local/bin
