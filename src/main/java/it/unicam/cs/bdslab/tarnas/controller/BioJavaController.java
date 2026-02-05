@@ -56,7 +56,7 @@ public class BioJavaController {
 
     public void save(Structure structure, Path dst) throws IOException {
         String pdbContent = structure.toPDB();
-        String cifContent = structure.toMMCIF();
+        String cifContent = structure.toMMCIF().replace(",", ".");
         try (FileWriter writer = new FileWriter(dst.resolveSibling(dst.getFileName()+".pdb").toFile())) {
             writer.write(pdbContent);
         }
