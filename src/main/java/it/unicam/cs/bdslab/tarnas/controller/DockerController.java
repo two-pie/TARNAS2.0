@@ -462,7 +462,7 @@ public class DockerController {
                         "for file in " + this.preprocessingPath + "/*.cif; do " +
                         "filename=$(basename \"$file\" .cif); " +
                         "python NA_pairwise_interactions.py -o /data/fr3d-output/ -f ebi_json --input " + this.preprocessingPath + " ${filename}.cif; " +
-                        "mv /data/fr3d-output/${filename}_*_basepair.json /data/fr3d-output/${filename}_basepair.json; " +
+                      //  "mv /data/fr3d-output/${filename}_*_basepair.json /data/fr3d-output/${filename}_basepair.json; " +
                         "done";
 
         // Create exec command
