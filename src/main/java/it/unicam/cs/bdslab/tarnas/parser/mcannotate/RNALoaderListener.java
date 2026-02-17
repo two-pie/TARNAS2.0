@@ -8,13 +8,13 @@ import java.util.ArrayList;
 import org.antlr.v4.runtime.ParserRuleContext;
 public class RNALoaderListener extends OutputGrammarBaseListener {
 
-    private final SecondaryStructure.Builder builder;
+    private final ExtendedRNASecondaryStructure.Builder builder;
     private final StringBuilder sequenceBuilder;
 
     public RNALoaderListener() {
         // Istanziamo il Builder. 
         // Nota: Assumo che 'Builder' sia 'static' nella classe SecondaryStructure.
-        this.builder = new SecondaryStructure.Builder();
+        this.builder = new ExtendedRNASecondaryStructure.Builder();
 
         // Inizializziamo le liste vuote nel builder, altrimenti 'builder.addPair' 
         // lancerebbe NullPointerException dato che nel codice fornito non sono istanziate.
@@ -27,7 +27,7 @@ public class RNALoaderListener extends OutputGrammarBaseListener {
     /**
      * Ritorna l'oggetto SecondaryStructure costruito alla fine del parsing.
      */
-    public SecondaryStructure getResult() {
+    public ExtendedRNASecondaryStructure getResult() {
         this.builder.setSequence(sequenceBuilder.toString());
         return this.builder.build();
     }

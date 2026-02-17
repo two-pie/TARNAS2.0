@@ -1,20 +1,23 @@
 package it.unicam.cs.bdslab.tarnas.parser.models;
 
 import java.util.List;
+import java.util.Map;
 
-public class SecondaryStructure {
+public class ExtendedRNASecondaryStructure {
     private String sequence;
     private List<Pair> pairs;
     private List<Pair> canonical;
+    private Map<String,String> headerInfo;
+
     /**
      * Base construcutor, monstly for testing purposes.
      */
-    public SecondaryStructure(String sequence, List<Pair> pairs) {
+    public ExtendedRNASecondaryStructure(String sequence, List<Pair> pairs) {
         this.sequence = sequence;
         this.pairs = pairs;
     }
 
-    private SecondaryStructure(Builder builder) {
+    private ExtendedRNASecondaryStructure(Builder builder) {
         this.sequence = builder.sequence;
         this.pairs = builder.pairs;
         this.canonical = builder.canonical;
@@ -64,8 +67,8 @@ public class SecondaryStructure {
             return this;
         }
 
-        public SecondaryStructure build() {
-            return new SecondaryStructure(this);
+        public ExtendedRNASecondaryStructure build() {
+            return new ExtendedRNASecondaryStructure(this);
         }
     }
 }
