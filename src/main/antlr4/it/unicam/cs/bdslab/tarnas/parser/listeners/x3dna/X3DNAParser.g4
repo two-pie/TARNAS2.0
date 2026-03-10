@@ -31,9 +31,9 @@ line
 basePairLine
     : lineNum=NUMBER COLON 
       pos1=NUMBER pos2=NUMBER 
-      annotation1=ID? GT chainId1=CHAIN_ID COLON residueInfo1
+      annotation1=ID? GT chainId1=CHAIN_ID COLON res1=residueInfo
       basePairSymbol=BASE_PAIR_SYMBOL
-      residueInfo2 COLON chainId2=CHAIN_ID LT annotation2=ID?
+      res2=residueInfo COLON chainId2=CHAIN_ID LT annotation2=ID?
       parameters*
     ;
 

@@ -1,10 +1,8 @@
-package it.unicam.cs.bdslab.tarnas.parser.listeners.RNApolis;
+package it.unicam.cs.bdslab.tarnas.parser.listeners.rnapolis;
 
 import it.unicam.cs.bdslab.tarnas.parser.models.BondType;
 import it.unicam.cs.bdslab.tarnas.parser.models.ExtendedRNASecondaryStructure;
 import it.unicam.cs.bdslab.tarnas.parser.models.Pair;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.rnapolis.RNApolisParser;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.rnapolis.RNApolisParserListener;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.TerminalNode;

@@ -66,4 +66,4 @@ RESIDUE_NOTATION: '[' '.'* LETTER (DIGIT+)? ']';
 ID: LETTER (LETTER | DIGIT | '_' | '.')*;
 
 // Catch-all for other text
-TEXT: ~[ \t\r\n:=\[\]()<>.*, -]+;
+TEXT: ~[ \t\r\n:=[\]()<>.*, -]+;

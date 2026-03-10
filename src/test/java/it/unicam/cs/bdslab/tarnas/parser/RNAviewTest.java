@@ -2,7 +2,7 @@ package it.unicam.cs.bdslab.tarnas.parser;
 
 import it.unicam.cs.bdslab.tarnas.parser.listeners.rnaview.RNAviewLexer;
 import it.unicam.cs.bdslab.tarnas.parser.listeners.rnaview.RNAviewParser;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.RNAview.RNAviewParserCustomListener;
+import it.unicam.cs.bdslab.tarnas.parser.listeners.rnaview.RNAviewParserCustomListener;
 import it.unicam.cs.bdslab.tarnas.parser.models.ExtendedRNASecondaryStructure;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
