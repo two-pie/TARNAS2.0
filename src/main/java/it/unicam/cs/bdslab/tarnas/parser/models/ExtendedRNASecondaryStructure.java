@@ -1,5 +1,7 @@
 package it.unicam.cs.bdslab.tarnas.parser.models;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,6 +23,7 @@ public class ExtendedRNASecondaryStructure {
         this.sequence = builder.sequence;
         this.pairs = builder.pairs;
         this.canonical = builder.canonical;
+        this.headerInfo = builder.headerInfo;
     }
 
     public String getSequence() {
@@ -39,10 +42,39 @@ public class ExtendedRNASecondaryStructure {
         return canonical;
     }
 
+    @Override
+    public String toString() {
+        StringBuilder result = new StringBuilder();
+
+        // header info
+        result.append("Header Info: \n");
+        headerInfo.forEach((key, value) ->
+                result.append(key).append(": ").append(value).append("\n")
+        );
+
+        // sequence
+        result.append("Sequence: \n").append(sequence).append("\n");
+
+        // canonical pairs
+        result.append("Canonical Pairs: \n");
+        canonical.forEach(c ->
+            result.append(c.toString()).append("\n")
+        );
+
+        // pairs
+        result.append("Pairs: \n");
+        pairs.forEach(p ->
+            result.append(p.toString()).append("\n")
+        );
+
+        return result.toString();
+    }
+
     public static class Builder {
-        private String sequence;
-        private List<Pair> pairs;
-        private List<Pair> canonical;
+        private String sequence = "";
+        private List<Pair> pairs = new ArrayList<>();
+        private List<Pair> canonical = new ArrayList<>();
+        private Map<String,String> headerInfo = new HashMap<>();
 
         public Builder setSequence(String sequence) {
             this.sequence = sequence;
@@ -64,6 +96,11 @@ public class ExtendedRNASecondaryStructure {
             if (pair.getType().isCanonical()) {
                 this.canonical.add(pair);
             }
+            return this;
+        }
+
+        public Builder addHeaderInfo(String key, String value) {
+            this.headerInfo.put(key, value);
             return this;
         }
 

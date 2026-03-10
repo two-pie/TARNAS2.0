@@ -17,9 +17,9 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.junit.jupiter.api.Test;
 
 
-import it.unicam.cs.bdslab.tarnas.OutputGrammarLexer;
-import it.unicam.cs.bdslab.tarnas.OutputGrammarParser;
-import it.unicam.cs.bdslab.tarnas.parser.mcannotate.RNALoaderListener;
+import it.unicam.cs.bdslab.tarnas.parser.listeners.mcannotate.MCAnnotateLexer;
+import it.unicam.cs.bdslab.tarnas.parser.listeners.mcannotate.MCAnnotateParser;
+import it.unicam.cs.bdslab.tarnas.parser.listeners.mcannotate.MCAnnotateParserCustomListener;
 import it.unicam.cs.bdslab.tarnas.parser.models.ExtendedRNASecondaryStructure;
 
 public class MCAnnotateTest {
@@ -27,13 +27,13 @@ public class MCAnnotateTest {
     public void testMCAnnotate() throws FileNotFoundException, IOException, URISyntaxException {
         File inputFile = new File(this.getClass().getResource("/MC_4PLX.txt").toURI());
         CharStream charStream = CharStreams.fromReader(new FileReader(inputFile));
-        OutputGrammarLexer lexer = new OutputGrammarLexer(charStream);
+        MCAnnotateLexer lexer = new MCAnnotateLexer(charStream);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
-        OutputGrammarParser parser = new OutputGrammarParser(tokens);
+        MCAnnotateParser parser = new MCAnnotateParser(tokens);
         
-        RNALoaderListener listener = new RNALoaderListener();
+        MCAnnotateParserCustomListener listener = new MCAnnotateParserCustomListener();
         ParseTreeWalker walker = new ParseTreeWalker();
-        walker.walk(listener, parser.file());
+        walker.walk(listener, parser.mcAnnotateFile());
         ExtendedRNASecondaryStructure structure = listener.getResult();
         assertNotEquals("", structure.getSequence());
         assertNotEquals(0, structure.getPairs().size());   

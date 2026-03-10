@@ -10,6 +10,14 @@ public enum BondType {
     /** Unknown or unclassified bond type. */
     UNKNOWN("unknown"),
 
+    /** Canonical base pair (simplified classification). */
+    CANONICAL("canonical"),
+
+    /** Non-canonical base pair (simplified classification). */
+    NON_CANONICAL("non-canonical"),
+
+    STACKING("stacking"),
+
     /** 1. Cis Watson–Crick/Watson–Crick Antiparallel */
     LEONTIS_WESTHOF_cWW("cWW"),
 
@@ -79,7 +87,17 @@ public enum BondType {
         return UNKNOWN;
     }
 
+    public boolean isCis() {
+        return this == LEONTIS_WESTHOF_cWW || this == LEONTIS_WESTHOF_cWH || this == LEONTIS_WESTHOF_cWS ||
+               this == LEONTIS_WESTHOF_cHH || this == LEONTIS_WESTHOF_cHS || this == LEONTIS_WESTHOF_cSS;
+    }
+
+    public boolean isTrans() {
+        return this == LEONTIS_WESTHOF_tWW || this == LEONTIS_WESTHOF_tWH || this == LEONTIS_WESTHOF_tWS ||
+               this == LEONTIS_WESTHOF_tHH || this == LEONTIS_WESTHOF_tHS || this == LEONTIS_WESTHOF_tSS;
+    }
+
     public boolean isCanonical() {
-        return this == LEONTIS_WESTHOF_cWW || this == LEONTIS_WESTHOF_tWW;
+        return this == CANONICAL || this == LEONTIS_WESTHOF_cWW || this == LEONTIS_WESTHOF_tWW;
     }
 }
