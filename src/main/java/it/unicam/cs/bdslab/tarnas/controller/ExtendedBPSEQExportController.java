@@ -98,7 +98,7 @@ public class ExtendedBPSEQExportController {
 
     private List<ExportItem> parseRNAView(Path folder) throws IOException {
         List<ExportItem> result = new ArrayList<>();
-        for (Path file : listFiles(folder, ".out")) {
+        for (Path file : listFiles(folder, "pdb.out")) {
             var lexer = new RNAviewLexer(CharStreams.fromPath(file));
             var parser = new RNAviewParser(new CommonTokenStream(lexer));
             var listener = new RNAviewParserCustomListener();
