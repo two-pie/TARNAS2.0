@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
 
 import it.unicam.cs.bdslab.tarnas.parser.listeners.mcannotate.MCAnnotateLexer;
 import it.unicam.cs.bdslab.tarnas.parser.listeners.mcannotate.MCAnnotateParser;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.mcannotate.MCAnnotateParserCustomListener;
+import it.unicam.cs.bdslab.tarnas.parser.listeners.mcannotate.McAnnotateParserCustomListener;
 import it.unicam.cs.bdslab.tarnas.parser.models.ExtendedRNASecondaryStructure;
 
 public class MCAnnotateTest {
@@ -31,10 +31,10 @@ public class MCAnnotateTest {
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         MCAnnotateParser parser = new MCAnnotateParser(tokens);
         
-        MCAnnotateParserCustomListener listener = new MCAnnotateParserCustomListener();
+        McAnnotateParserCustomListener listener = new McAnnotateParserCustomListener();
         ParseTreeWalker walker = new ParseTreeWalker();
-        walker.walk(listener, parser.mcAnnotateFile());
-        ExtendedRNASecondaryStructure structure = listener.getResult();
+        walker.walk(listener, parser.mcAannotateFile());
+        ExtendedRNASecondaryStructure structure = listener.getStructure();
         assertNotEquals("", structure.getSequence());
         assertNotEquals(0, structure.getPairs().size());   
         

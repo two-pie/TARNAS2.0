@@ -1,3 +1,4 @@
+Residue conformations -------------------------------------------
 A1 : GTP
 A2 : G C3p_endo anti
 A3 : A C3p_endo anti
