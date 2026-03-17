@@ -1,6 +1,7 @@
 package it.unicam.cs.bdslab.tarnas.view;
 
 import it.unicam.cs.bdslab.tarnas.controller.DockerController;
+import it.unicam.cs.bdslab.tarnas.controller.ExtendedBPSEQExportController;
 import it.unicam.cs.bdslab.tarnas.controller.IOController;
 import it.unicam.cs.bdslab.tarnas.view.utils.TOOL;
 import javafx.animation.Animation;
@@ -57,6 +58,7 @@ public class HomeController {
 
     private IOController ioController;
     private DockerController dockerController;
+    private ExtendedBPSEQExportController extendedBPSEQExportController;
 
     @FXML
     private TableView<Path> filesTable;
@@ -89,6 +91,7 @@ public class HomeController {
         logger.info("Initializing...");
         this.ioController = IOController.getInstance();
         this.dockerController = DockerController.getInstance();
+        this.extendedBPSEQExportController = ExtendedBPSEQExportController.getInstance();
 
         this.initSelectEventOnButtonItems(Arrays.stream(TOOL.values()).toList());
         logger.info("Initialization done");
@@ -323,11 +326,14 @@ public class HomeController {
 
         if (action != null) {
             action.run();
+            int generatedFiles = this.extendedBPSEQExportController.exportForTool(this.selectedTool, this.ioController.getSharedDirectory());
             showAlert(
                     Alert.AlertType.INFORMATION,
                     this.selectedTool.getName() + " Tool",
                     "",
-                    "Output saved in " + this.ioController.getSharedDirectory()
+                "Output saved in " + this.ioController.getSharedDirectory()
+                    + "\nExtended BPSEQ files generated: " + generatedFiles
+                    + "\nFolder: " + this.extendedBPSEQExportController.getOutputDirectory(this.ioController.getSharedDirectory())
             );
             logger.info(this.selectedTool.getName().toUpperCase() + " TOOL EXECUTED");
         } else {

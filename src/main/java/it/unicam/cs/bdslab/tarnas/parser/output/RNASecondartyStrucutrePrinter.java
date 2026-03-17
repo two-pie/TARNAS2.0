@@ -7,7 +7,7 @@ import java.util.List;
 
 public class RNASecondartyStrucutrePrinter {
 
-    String printExtendedBPSEQ(ExtendedRNASecondaryStructure structure) {
+    public String printExtendedBPSEQ(ExtendedRNASecondaryStructure structure) {
         StringBuilder result = new StringBuilder();
         //HEADERS
         result.append(
