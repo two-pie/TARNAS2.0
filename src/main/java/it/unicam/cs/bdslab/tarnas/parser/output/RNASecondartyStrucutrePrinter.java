@@ -7,26 +7,29 @@ import java.util.List;
 
 public class RNASecondartyStrucutrePrinter {
 
+    private static String HEADER = "Index\tNucleotide\t" 
+        + String.join("\t", BondType.getLeontisWesthofFamily().stream()
+            .map(BondType::getInfo)
+            .toList()
+        );
+
     public String printExtendedBPSEQ(ExtendedRNASecondaryStructure structure) {
         StringBuilder result = new StringBuilder();
-        //HEADERS
-        result.append(
-                "Index" + "\t" + "Nucleotide" + "\t"
-        );
-        for (BondType type : BondType.values()) {
-            result.append(type.getInfo())
-                    .append("\t");
-        }
+        result.append(HEADER);
         result.append("\n");
-        //BODY
         for (int i = 0; i < structure.getSequence().length(); i++) {
             char nucleotide = structure.getSequence().charAt(i);
             result.append(i + 1).append("\t").append(nucleotide).append("\t");
-            for (BondType type : BondType.values()) {
+            for (BondType type : BondType.getLeontisWesthofFamily()) {
                 int finalI = i;
                 List<Integer> matches = structure.getPairs().stream()
-                        .filter(pair -> pair.getType() == type && (pair.getPos1() == finalI + 1 || pair.getPos2() == finalI + 1))
-                        .map(p -> p.getPos1() == finalI + 1 ? p.getPos2() : p.getPos1())
+                        .filter(pair -> 
+                            // Filter pairs that match the current bond type and involve the current nucleotide position
+                            pair.getType() == type && 
+                                  (pair.getPos1() == finalI  
+                                || pair.getPos2() == finalI)
+                        )
+                        .map(p -> (p.getPos1() == finalI ? p.getPos2() : p.getPos1()) + 1)
                         .toList();
                 if (matches.isEmpty()) {
                     result.append("0").append("\t");
