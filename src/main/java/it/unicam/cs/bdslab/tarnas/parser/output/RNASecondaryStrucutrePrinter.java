@@ -5,7 +5,7 @@ import it.unicam.cs.bdslab.tarnas.parser.models.ExtendedRNASecondaryStructure;
 
 import java.util.List;
 
-public class RNASecondartyStrucutrePrinter {
+public class RNASecondaryStrucutrePrinter {
 
     private static String HEADER = "Index\tNucleotide\t" 
         + String.join("\t", BondType.getLeontisWesthofFamily().stream()

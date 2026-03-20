@@ -21,7 +21,7 @@ public class RNASecondaryStrcuturePrinterTest {
         pairs.add(new Pair(1, 3, BondType.LEONTIS_WESTHOF_cHS));
         
         ExtendedRNASecondaryStructure structure = new ExtendedRNASecondaryStructure("ACGU", pairs); 
-        RNASecondartyStrucutrePrinter printer = new RNASecondartyStrucutrePrinter();
+        RNASecondaryStrucutrePrinter printer = new RNASecondaryStrucutrePrinter();
         String result = printer.printExtendedBPSEQ(structure);
         System.out.println(result);
         assertNotEquals("", result.trim(), "Output should not be empty");
