@@ -422,9 +422,11 @@ public class DockerController {
                         "for file in " + this.preprocessingPath + "/*.pdb; do " +
                         "filename=$(basename \"$file\"); " +
                         "name=\"${filename%.}\"; " +
-                        "./barnaba/bin/barnaba ANNOTATE --pdb \"$file\"; " +
-                        "mv outfile.ANNOTATE.pairing.out \"/data/barnaba-output/${name}.ANNOTATE.pairing.out\"; " +
-                        "mv outfile.ANNOTATE.stacking.out \"/data/barnaba-output/${name}.ANNOTATE.stacking.out\"; " +
+                        "./barnaba/bin/barnaba ANNOTATE --pdb \"$file\" 2> ${name}.err;" +
+                        "cat ${name}.err outfile.ANNOTATE.pairing.out > ${name}.pairing.out;" +
+                        "cat ${name}.err outfile.ANNOTATE.stacking.out >> ${name}.stacking.out;" +
+                        "mv ${name}.pairing.out \"/data/barnaba-output/${name}.ANNOTATE.pairing.out\"; " +
+                        "mv ${name}.stacking.out \"/data/barnaba-output/${name}.ANNOTATE.stacking.out\"; " +
                         "done";
 
         // Create exec command
@@ -478,7 +480,7 @@ public class DockerController {
                         "for file in " + this.preprocessingPath + "/*.pdb; do " +
                         "  filename=$(basename \"$file\"); " +
                         "  prefix=\"${filename%.*}\"; " +
-                        "  find_pair \"$file\"; " +
+                        "  find_pair -p \"$file\"; " +
                         "  for output in bestpairs.pdb bp_order.dat col_chains.scr col_helices.scr hel_regions.pdb ref_frames.dat; do " +
                         "    if [ -f \"$output\" ]; then " +
                         "      mv \"$output\" \"x3dna-output/${prefix}_$output\"; " +
