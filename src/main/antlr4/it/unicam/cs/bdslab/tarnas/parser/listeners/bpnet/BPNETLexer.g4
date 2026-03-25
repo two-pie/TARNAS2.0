@@ -30,14 +30,14 @@ SEPARATOR_LINE: '=====' '='* -> skip;
 // Base pair type: W:WC, W:HC, S:HC, S:WT, H:WC, H:SC, etc.
 PAIR_TYPE: [WHS] ':' [WHS] [CT];
 
-// BP/TP indicator (Base Pair or Triple Pair)
-BP_INDICATOR: 'BP' | 'TP';
-
-// Chain ID
-CHAIN_ID: [A-Z];
+// BP/TP indicator (Base Pair or Triple Pair or Bifurcate pair)
+BP_INDICATOR: 'BP' | 'TP' | 'BF';
 
 // Base name
 BASE: [ACGU];
+
+// Chain ID
+CHAIN_ID: [A-Z];
 
 // PDB insertion code (usually ?)
 INS_CODE: '?';

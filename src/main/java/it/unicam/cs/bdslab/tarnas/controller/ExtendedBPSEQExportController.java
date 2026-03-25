@@ -22,7 +22,7 @@ import it.unicam.cs.bdslab.tarnas.parser.listeners.x3dna.X3DNALexer;
 import it.unicam.cs.bdslab.tarnas.parser.listeners.x3dna.X3DNAParser;
 import it.unicam.cs.bdslab.tarnas.parser.listeners.x3dna.X3DNAParserCustomListener;
 import it.unicam.cs.bdslab.tarnas.parser.models.ExtendedRNASecondaryStructure;
-import it.unicam.cs.bdslab.tarnas.parser.output.RNASecondartyStrucutrePrinter;
+import it.unicam.cs.bdslab.tarnas.parser.output.RNASecondaryStrucutrePrinter;
 import it.unicam.cs.bdslab.tarnas.view.utils.TOOL;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -46,7 +46,7 @@ public class ExtendedBPSEQExportController {
     public static final Logger logger = Logger.getLogger("it.unicam.cs.bdslab.tarnas.controller.ExtendedBPSEQExportController");
 
     private static final ExtendedBPSEQExportController instance = new ExtendedBPSEQExportController();
-    private final RNASecondartyStrucutrePrinter printer = new RNASecondartyStrucutrePrinter();
+    private final RNASecondaryStrucutrePrinter printer = new RNASecondaryStrucutrePrinter();
 
     private ExtendedBPSEQExportController() {
     }

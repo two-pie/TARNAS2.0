@@ -27,18 +27,18 @@ bpnetFile
 // - Residue info + one pair (base pair)
 // - Residue info + one pair + additional pair (triplet)
 residueLine
-    : serialNum=INTEGER pdbNum1=INTEGER base1=BASE insCode1=INS_CODE chain1=CHAIN_ID
+    : serialNum=INTEGER pdbNum1=INTEGER base1=BASE insCode1=INS_CODE chain1=(CHAIN_ID | BASE)
       (pairInfo tripletInfo*)?
     ;
 
 // Pair information: paired residue + pair type + BP indicator + e-value
 pairInfo
-    : pairedSerial=INTEGER pairedPdbNum=INTEGER pairedBase=BASE pairedInsCode=INS_CODE pairedChain=CHAIN_ID
+    : pairedSerial=INTEGER pairedPdbNum=INTEGER pairedBase=BASE pairedInsCode=INS_CODE pairedChain=(CHAIN_ID | BASE)
       pairType=PAIR_TYPE indicator=BP_INDICATOR evalue=DECIMAL
     ;
 
 // Triplet information (additional pairing for triplets)
 tripletInfo
-    : tripletSerial=INTEGER tripletPdbNum=INTEGER tripletBase=BASE tripletInsCode=INS_CODE tripletChain=CHAIN_ID
+    : tripletSerial=INTEGER tripletPdbNum=INTEGER tripletBase=BASE tripletInsCode=INS_CODE tripletChain=(CHAIN_ID | BASE)
       tripletPairType=PAIR_TYPE tripletIndicator=BP_INDICATOR tripletEvalue=DECIMAL
     ;

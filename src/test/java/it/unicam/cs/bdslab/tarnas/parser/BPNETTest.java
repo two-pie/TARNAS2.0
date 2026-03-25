@@ -39,5 +39,15 @@ public class BPNETTest {
         assertFalse(structure.getPairs().isEmpty(), "Should have parsed some base pairs");
         
         System.out.println("BPNET parsed " + structure.getPairs().size() + " pairs");
+        System.out.println("BPNET parsed " + structure.getCanonical().size() + " canonical");
+        System.out.println("BPNET sequence: " + structure.getSequence());
+        System.out.println("BPNET pairs:");
+        structure.getPairs().forEach(pair -> {
+            System.out.println(
+                "(" + pair.getPos1() + ", " + pair.getPos2() + ") " +
+                pair.getNucleotide1() + "-" + pair.getNucleotide2() + " " +
+                pair.getType()
+            );
+        });
     }
 }

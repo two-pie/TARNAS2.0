@@ -31,14 +31,13 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
-import javafx.scene.control.ProgressBar;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 
@@ -270,59 +269,7 @@ public class HomeController {
     public void handleRun() throws InterruptedException, IOException {
         logger.info("RUN button clicked");
 
-        Map<TOOL, Runnable> toolActions = Map.of(
-                RNAPOLIS_ANNOTATOR, () -> {
-                    try {
-                        this.dockerController.rnapolisAnnotator();
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                },
-                RNAVIEW, () -> {
-                    try {
-                        this.dockerController.rnaView();
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                },
-                BARNABA, () -> {
-                    try {
-                        this.dockerController.baRNAba();
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                },
-                BPNET, () -> {
-                    try {
-                        this.dockerController.bpnet();
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                },
-                FR3D, () -> {
-                    try {
-                        this.dockerController.fr3d();
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                },
-                X3DNA, () -> {
-                    try {
-                        this.dockerController.x3dnaBy(dockerX3DNAContainer);
-                    } catch (InterruptedException | IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                },
-                MC_ANNOTATE, () -> {
-                    try {
-                        this.dockerController.mcAnnotate();
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-        );
-
-        Runnable action = toolActions.get(this.selectedTool);
+        Runnable action = actionsMap.get(this.selectedTool);
 
         if (action != null) {
             action.run();
@@ -357,6 +304,148 @@ public class HomeController {
         alert.showAndWait();
     }
 
+    /**
+     * This method can be used to execute the pipeline:
+     * 1. Execute the selected tools (e.g., RNAPolis Annotator, RNAView...)
+     * 2. Generate extended BPSEQ or normal BPSEQ files based on the output of the tools and the user's choice.
+     * @param selectedTools
+     * @param outputExtendedBPSEQ
+     */
+    private void executeCommand(Set<TOOL> selectedTools, boolean outputExtendedBPSEQ) throws IOException {
+        for (TOOL tool : selectedTools) {
+            Runnable action = actionsMap.get(tool);
+            if (action != null) {
+                action.run();
+            }
+            
+            try {
+                this.extendedBPSEQExportController.exportForTool(tool, this.ioController.getSharedDirectory());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+        
+
+    }
+
+    private Map<TOOL, Runnable> actionsMap = Map.of(
+        RNAPOLIS_ANNOTATOR, () -> {
+            try {
+                this.dockerController.rnapolisAnnotator();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        },
+        RNAVIEW, () -> {
+            try {
+                this.dockerController.rnaView();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        },
+        BARNABA, () -> {
+            try {
+                this.dockerController.baRNAba();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        },
+        BPNET, () -> {
+            try {
+                this.dockerController.bpnet();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        },
+        FR3D, () -> {
+            try {
+                this.dockerController.fr3d();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        },
+        X3DNA, () -> {
+            try {
+                this.dockerController.x3dnaBy(dockerX3DNAContainer);
+            } catch (InterruptedException | IOException e) {
+                throw new RuntimeException(e);
+            }
+        },
+        MC_ANNOTATE, () -> {
+            try {
+                this.dockerController.mcAnnotate();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    );
+
+    /**
+
+     * General method to display a resizable Alert dialog with HTML content.
+     *
+     * @param title       The title of the Alert dialog.
+     * @param header      The header text of the Alert dialog.
+     * @param htmlContent The HTML content to display inside the WebView.
+     */
+    private void showAlertWithContent(String title, String header, String htmlContent) {
+        Alert alertDialog = new Alert(Alert.AlertType.INFORMATION);
+        alertDialog.setTitle(title);
+        alertDialog.setHeaderText(header);
+
+        WebView webView = new WebView();
+        WebEngine webEngine = webView.getEngine();
+        webEngine.loadContent(htmlContent);
+
+        // Set initial size for the WebView
+        webView.setPrefSize(1000, 600);
+
+        // Allow resizing of the alert dialog
+        alertDialog.setResizable(true);
+
+        // Adjust WebView size when the dialog is resized
+        alertDialog.widthProperty().addListener((obs, oldVal, newVal) -> {
+            webView.setPrefWidth(newVal.doubleValue() - 50);  // Adjust width
+        });
+
+        alertDialog.heightProperty().addListener((obs, oldVal, newVal) -> {
+            webView.setPrefHeight(newVal.doubleValue() - 100);  // Adjust height
+        });
+
+        // Intercept navigation requests and open them in the system's default browser
+        webEngine.locationProperty().addListener((obs, oldLocation, newLocation) -> {
+            if (newLocation != null && newLocation.startsWith("http")) {
+                try {
+                    if (Desktop.isDesktopSupported()) {
+                        Desktop.getDesktop().browse(new URI(newLocation));  // Open the URL in the default system browser
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                webEngine.loadContent(htmlContent);  // Prevent navigation in the WebView by reloading the original content
+            }
+        });
+
+        // Set the WebView as the content of the dialog
+        alertDialog.getDialogPane().setContent(webView);
+
+        // Show the dialog
+        alertDialog.showAndWait();
+    }
+
+    private void initSelectEventOnButtonItems(List<TOOL> availableTranslations) {
+        this.menuBtnTools.getItems().clear();
+        availableTranslations.forEach(a -> {
+            var item = new MenuItem(a.getName());
+            item.setUserData(a);
+            this.menuBtnTools.getItems().add(item);
+            item.setOnAction(e -> {
+                this.selectedTool = (TOOL) ((MenuItem) e.getSource()).getUserData();
+                this.menuBtnTools.setText((((MenuItem) e.getSource()).getText())); // set String to display in MenuItem
+                this.menuBtnTools.setUserData(this.selectedTool);
+            });
+        });
+    }
 
     @FXML
     public void handleHelp() {
@@ -485,71 +574,4 @@ public class HomeController {
                 """;
         showAlertWithContent("About TARNAS", "Contact Us", contactUsContent);
     }
-
-    /**
-     * General method to display a resizable Alert dialog with HTML content.
-     *
-     * @param title       The title of the Alert dialog.
-     * @param header      The header text of the Alert dialog.
-     * @param htmlContent The HTML content to display inside the WebView.
-     */
-    private void showAlertWithContent(String title, String header, String htmlContent) {
-        Alert alertDialog = new Alert(Alert.AlertType.INFORMATION);
-        alertDialog.setTitle(title);
-        alertDialog.setHeaderText(header);
-
-        WebView webView = new WebView();
-        WebEngine webEngine = webView.getEngine();
-        webEngine.loadContent(htmlContent);
-
-        // Set initial size for the WebView
-        webView.setPrefSize(1000, 600);
-
-        // Allow resizing of the alert dialog
-        alertDialog.setResizable(true);
-
-        // Adjust WebView size when the dialog is resized
-        alertDialog.widthProperty().addListener((obs, oldVal, newVal) -> {
-            webView.setPrefWidth(newVal.doubleValue() - 50);  // Adjust width
-        });
-
-        alertDialog.heightProperty().addListener((obs, oldVal, newVal) -> {
-            webView.setPrefHeight(newVal.doubleValue() - 100);  // Adjust height
-        });
-
-        // Intercept navigation requests and open them in the system's default browser
-        webEngine.locationProperty().addListener((obs, oldLocation, newLocation) -> {
-            if (newLocation != null && newLocation.startsWith("http")) {
-                try {
-                    if (Desktop.isDesktopSupported()) {
-                        Desktop.getDesktop().browse(new URI(newLocation));  // Open the URL in the default system browser
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                webEngine.loadContent(htmlContent);  // Prevent navigation in the WebView by reloading the original content
-            }
-        });
-
-        // Set the WebView as the content of the dialog
-        alertDialog.getDialogPane().setContent(webView);
-
-        // Show the dialog
-        alertDialog.showAndWait();
-    }
-
-    private void initSelectEventOnButtonItems(List<TOOL> availableTranslations) {
-        this.menuBtnTools.getItems().clear();
-        availableTranslations.forEach(a -> {
-            var item = new MenuItem(a.getName());
-            item.setUserData(a);
-            this.menuBtnTools.getItems().add(item);
-            item.setOnAction(e -> {
-                this.selectedTool = (TOOL) ((MenuItem) e.getSource()).getUserData();
-                this.menuBtnTools.setText((((MenuItem) e.getSource()).getText())); // set String to display in MenuItem
-                this.menuBtnTools.setUserData(this.selectedTool);
-            });
-        });
-    }
-
 }
