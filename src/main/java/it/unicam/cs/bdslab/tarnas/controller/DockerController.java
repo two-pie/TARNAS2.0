@@ -422,9 +422,11 @@ public class DockerController {
                         "for file in " + this.preprocessingPath + "/*.pdb; do " +
                         "filename=$(basename \"$file\"); " +
                         "name=\"${filename%.}\"; " +
-                        "./barnaba/bin/barnaba ANNOTATE --pdb \"$file\"; " +
-                        "mv outfile.ANNOTATE.pairing.out \"/data/barnaba-output/${name}.ANNOTATE.pairing.out\"; " +
-                        "mv outfile.ANNOTATE.stacking.out \"/data/barnaba-output/${name}.ANNOTATE.stacking.out\"; " +
+                        "./barnaba/bin/barnaba ANNOTATE --pdb \"$file\" 2> ${name}.err;" +
+                        "cat ${name}.err outfile.ANNOTATE.pairing.out > ${name}.pairing.out;" +
+                        "cat ${name}.err outfile.ANNOTATE.stacking.out >> ${name}.stacking.out;" +
+                        "mv ${name}.pairing.out \"/data/barnaba-output/${name}.ANNOTATE.pairing.out\"; " +
+                        "mv ${name}.stacking.out \"/data/barnaba-output/${name}.ANNOTATE.stacking.out\"; " +
                         "done";
 
         // Create exec command
@@ -474,17 +476,15 @@ public class DockerController {
 
     public void x3dnaBy(String containerName) throws InterruptedException, IOException {
         String shellCmd =
-                "set -e; cd /data; mkdir -p x3dna-output; " +
+                "set -e; cd /data; mkdir -p x3dna-output; mkdir -p x3dna-tmp; cd x3dna-tmp;" +
                         "for file in " + this.preprocessingPath + "/*.pdb; do " +
                         "  filename=$(basename \"$file\"); " +
                         "  prefix=\"${filename%.*}\"; " +
-                        "  find_pair \"$file\"; " +
-                        "  for output in bestpairs.pdb bp_order.dat col_chains.scr col_helices.scr hel_regions.pdb ref_frames.dat; do " +
-                        "    if [ -f \"$output\" ]; then " +
-                        "      mv \"$output\" \"x3dna-output/${prefix}_$output\"; " +
-                        "    fi; " +
-                        "  done; " +
-                        "done";
+                        // EXAMPLE x3dna-dssr -i=/data/1YMO.pdb --pair-only --json -o=ex.json
+                        "  x3dna-dssr -i=\"$file\" --pair-only --json -o=\"${prefix}_dssr.json\"; " +
+                        "  mv \"${prefix}_dssr.json\" /data/x3dna-output/; " +
+                        "done; " +
+                "cd ..; rm -rf x3dna-tmp";
 
         new ProcessBuilder("docker", "exec", containerName, "bash", "-c", shellCmd)
                 .inheritIO().start().waitFor();
