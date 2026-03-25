@@ -18,14 +18,15 @@ RUN apt-get update && apt-get install -y \
     && pip install --upgrade pip
 
 # Copy and extract X3DNA tarball, then run setup
-COPY x3dna-v2.4-linux-64bit.tar .
+COPY dssr-basic-linux-v2.8.1.zip .
 
-RUN tar -xf x3dna-v2.4-linux-64bit.tar && \
-    rm x3dna-v2.4-linux-64bit.tar && \
-    cd x3dna-v2.4/bin && ./x3dna_setup
+RUN unzip dssr-basic-linux-v2.8.1.zip \
+    && chmod +x x3dna-dssr
 
+ENV X3DNA=/home
+ENV PATH=$X3DNA:$PATH
 # Set environment variables
-ENV X3DNA=/home/x3dna-v2.4
-ENV PATH=/home/x3dna-v2.4/bin:$PATH
+#ENV X3DNA=/home/x3dna-v2.4
+#ENV PATH=/home/x3dna-v2.4/bin:$PATH
 
 CMD ["tail", "-f", "/dev/null"]

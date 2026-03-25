@@ -476,17 +476,15 @@ public class DockerController {
 
     public void x3dnaBy(String containerName) throws InterruptedException, IOException {
         String shellCmd =
-                "set -e; cd /data; mkdir -p x3dna-output; " +
+                "set -e; cd /data; mkdir -p x3dna-output; mkdir -p x3dna-tmp; cd x3dna-tmp;" +
                         "for file in " + this.preprocessingPath + "/*.pdb; do " +
                         "  filename=$(basename \"$file\"); " +
                         "  prefix=\"${filename%.*}\"; " +
-                        "  find_pair -p \"$file\"; " +
-                        "  for output in bestpairs.pdb bp_order.dat col_chains.scr col_helices.scr hel_regions.pdb ref_frames.dat; do " +
-                        "    if [ -f \"$output\" ]; then " +
-                        "      mv \"$output\" \"x3dna-output/${prefix}_$output\"; " +
-                        "    fi; " +
-                        "  done; " +
-                        "done";
+                        // EXAMPLE x3dna-dssr -i=/data/1YMO.pdb --pair-only --json -o=ex.json
+                        "  x3dna-dssr -i=\"$file\" --pair-only --json -o=\"${prefix}_dssr.json\"; " +
+                        "  mv \"${prefix}_dssr.json\" /data/x3dna-output/; " +
+                        "done; " +
+                "cd ..; rm -rf x3dna-tmp";
 
         new ProcessBuilder("docker", "exec", containerName, "bash", "-c", shellCmd)
                 .inheritIO().start().waitFor();
