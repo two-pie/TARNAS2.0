@@ -42,7 +42,8 @@ public class Main extends Application {
 
     @Override
     public void start(Stage stage) throws IOException, URISyntaxException {
-        Parent root = FXMLLoader.load(Objects.requireNonNull(Main.class.getResource("/fxml/home.fxml")));
+        FXMLLoader loader = new FXMLLoader(Objects.requireNonNull(Main.class.getResource("/fxml/home.fxml")));
+        Parent root = loader.load();
         stage.setTitle("TARNAS2.0");
         stage.getIcons().add(new Image(String.valueOf(App.class.getResource("/img/tarnas-icon.png").toURI())));
         stage.setScene(new Scene(root));

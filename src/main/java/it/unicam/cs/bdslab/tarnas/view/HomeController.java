@@ -28,10 +28,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
-import java.util.Arrays;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.logging.Logger;
 
 import javafx.beans.binding.Bindings;
@@ -83,6 +81,9 @@ public class HomeController {
     @FXML
     public MenuButton menuBtnTools;
 
+    @FXML
+    public  ListView<TOOL> toolListView;
+
     private TOOL selectedTool;
 
     @FXML
@@ -93,6 +94,8 @@ public class HomeController {
         this.extendedBPSEQExportController = ExtendedBPSEQExportController.getInstance();
 
         this.initSelectEventOnButtonItems(Arrays.stream(TOOL.values()).toList());
+        this.toolListView.getItems().setAll(TOOL.values());
+        this.toolListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         logger.info("Initialization done");
     }
 
@@ -268,25 +271,42 @@ public class HomeController {
     @FXML
     public void handleRun() throws InterruptedException, IOException {
         logger.info("RUN button clicked");
-
-        Runnable action = actionsMap.get(this.selectedTool);
-
-        if (action != null) {
-            action.run();
-            int generatedFiles = this.extendedBPSEQExportController.exportForTool(this.selectedTool, this.ioController.getSharedDirectory());
-            showAlert(
-                    Alert.AlertType.INFORMATION,
-                    this.selectedTool.getName() + " Tool",
-                    "",
-                "Output saved in " + this.ioController.getSharedDirectory()
-                    + "\nExtended BPSEQ files generated: " + generatedFiles
-                    + "\nFolder: " + this.extendedBPSEQExportController.getOutputDirectory(this.ioController.getSharedDirectory())
-            );
-            logger.info(this.selectedTool.getName().toUpperCase() + " TOOL EXECUTED");
-        } else {
-            showAlert(Alert.AlertType.ERROR, "Tool Error", "", "No action defined for selected tool.");
-            logger.warning("No action defined for tool: " + this.selectedTool);
+        List<TOOL> selectedTools = new ArrayList<>();
+        selectedTools.addAll(this.toolListView.getSelectionModel().getSelectedItems());
+        logger.info("Selected tools: " + selectedTools);
+        if (selectedTools.isEmpty()) {
+            showAlert(Alert.AlertType.WARNING, "No Tool Selected", "", "Please select at least one tool to run.");
+            logger.warning("No tool selected to run.");
+            return;
         }
+
+        if (this.ioController.getSharedDirectory() == null) {
+            showAlert(Alert.AlertType.WARNING, "No Folder Selected", "", "Please select a folder to run the tools.");
+            logger.warning("No folder selected to run the tools.");
+            return;
+        }
+
+        this.executeCommand(new HashSet<>(selectedTools), true);
+
+
+//        Runnable action = actionsMap.get(this.selectedTool);
+//
+//        if (action != null) {
+//            action.run();
+//            int generatedFiles = this.extendedBPSEQExportController.exportForTool(this.selectedTool, this.ioController.getSharedDirectory());
+//            showAlert(
+//                    Alert.AlertType.INFORMATION,
+//                    this.selectedTool.getName() + " Tool",
+//                    "",
+//                "Output saved in " + this.ioController.getSharedDirectory()
+//                    + "\nExtended BPSEQ files generated: " + generatedFiles
+//                    + "\nFolder: " + this.extendedBPSEQExportController.getOutputDirectory(this.ioController.getSharedDirectory())
+//            );
+//            logger.info(this.selectedTool.getName().toUpperCase() + " TOOL EXECUTED");
+//        } else {
+//            showAlert(Alert.AlertType.ERROR, "Tool Error", "", "No action defined for selected tool.");
+//            logger.warning("No action defined for tool: " + this.selectedTool);
+//        }
     }
 
 
@@ -308,11 +328,26 @@ public class HomeController {
      * This method can be used to execute the pipeline:
      * 1. Execute the selected tools (e.g., RNAPolis Annotator, RNAView...)
      * 2. Generate extended BPSEQ or normal BPSEQ files based on the output of the tools and the user's choice.
-     * @param selectedTools
-     * @param outputExtendedBPSEQ
+     * @param selectedTools the set of tools selected by the user to run
+     * @param outputExtendedBPSEQ if the output format should be extended BPSEQ (true) or normal BPSEQ (false)
      */
     private void executeCommand(Set<TOOL> selectedTools, boolean outputExtendedBPSEQ) throws IOException {
+        // START LOADING
+        Alert loadingAlert = new Alert(Alert.AlertType.INFORMATION);
+        loadingAlert.setTitle("Processing");
+        loadingAlert.setHeaderText(null);
+        Label title = new Label("Running selected tools…");
+        ProgressBar bar = new ProgressBar();
+        bar.setPrefWidth(380);
+        Label percent = new Label("0%");
+        VBox box = new VBox(10, title, bar, percent);
+        loadingAlert.getDialogPane().setContent(box);
+        loadingAlert.getDialogPane().setPrefWidth(460);
+        loadingAlert.show();
+        int stepPerTool = 100 / selectedTools.size();
+
         for (TOOL tool : selectedTools) {
+            box.setAccessibleText(tool.getName());
             Runnable action = actionsMap.get(tool);
             if (action != null) {
                 action.run();
@@ -323,7 +358,20 @@ public class HomeController {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
+
+            percent.setText(stepPerTool + "%");
+            bar.setProgress(bar.getProgress() + (double) stepPerTool / 100);
+            box.setAccessibleText(tool.getName());
         }
+
+        // END LOADING
+        loadingAlert.close();
+            showAlert(
+                    Alert.AlertType.INFORMATION,
+                    "Process Completed",
+                    "",
+                    "Selected tools have been executed and output files are saved in: " + this.ioController.getSharedDirectory()
+            );
         
 
     }

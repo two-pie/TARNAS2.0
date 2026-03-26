@@ -162,7 +162,7 @@ public class ExtendedBPSEQExportController {
 
     private List<ExportItem> parseX3DNA(Path folder) throws IOException {
         List<ExportItem> result = new ArrayList<>();
-        for (Path file : listFiles(folder, "bp_order.dat")) {
+        for (Path file : listFiles(folder, ".json")) {
             var lexer = new X3DNALexer(CharStreams.fromPath(file));
             var parser = new X3DNAParser(new CommonTokenStream(lexer));
             var listener = new X3DNAParserCustomListener();
