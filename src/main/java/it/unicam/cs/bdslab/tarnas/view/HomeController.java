@@ -331,49 +331,72 @@ public class HomeController {
      * @param selectedTools the set of tools selected by the user to run
      * @param outputExtendedBPSEQ if the output format should be extended BPSEQ (true) or normal BPSEQ (false)
      */
-    private void executeCommand(Set<TOOL> selectedTools, boolean outputExtendedBPSEQ) throws IOException {
-        // START LOADING
+    private void executeCommand(Set<TOOL> selectedTools, boolean outputExtendedBPSEQ) {
+
         Alert loadingAlert = new Alert(Alert.AlertType.INFORMATION);
         loadingAlert.setTitle("Processing");
         loadingAlert.setHeaderText(null);
+
         Label title = new Label("Running selected tools…");
         ProgressBar bar = new ProgressBar();
         bar.setPrefWidth(380);
         Label percent = new Label("0%");
+
         VBox box = new VBox(10, title, bar, percent);
         loadingAlert.getDialogPane().setContent(box);
         loadingAlert.getDialogPane().setPrefWidth(460);
-        loadingAlert.show();
-        int stepPerTool = 100 / selectedTools.size();
 
-        for (TOOL tool : selectedTools) {
-            box.setAccessibleText(tool.getName());
-            Runnable action = actionsMap.get(tool);
-            if (action != null) {
-                action.run();
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                updateProgress(0, selectedTools.size());
+                int total = selectedTools.size();
+                int count = 0;
+
+                for (TOOL tool : selectedTools) {
+
+                    updateMessage(tool.getName());
+
+                    Runnable action = actionsMap.get(tool);
+                    if (action != null) {
+                        action.run();
+                    }
+
+                    extendedBPSEQExportController.exportForTool(
+                            tool,
+                            ioController.getSharedDirectory()
+                    );
+
+                    count++;
+                    updateProgress(count, total);
+                }
+
+                return null;
             }
-            
-            try {
-                this.extendedBPSEQExportController.exportForTool(tool, this.ioController.getSharedDirectory());
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
+        };
 
-            percent.setText(stepPerTool + "%");
-            bar.setProgress(bar.getProgress() + (double) stepPerTool / 100);
-            box.setAccessibleText(tool.getName());
-        }
+        // Bind UI
+        bar.progressProperty().bind(task.progressProperty());
+        percent.textProperty().bind(
+                task.progressProperty().multiply(100).asString("%.0f%%")
+        );
 
-        // END LOADING
-        loadingAlert.close();
+        title.textProperty().bind(task.messageProperty());
+
+        task.setOnSucceeded(e -> {
+            loadingAlert.close();
+
             showAlert(
                     Alert.AlertType.INFORMATION,
                     "Process Completed",
                     "",
-                    "Selected tools have been executed and output files are saved in: " + this.ioController.getSharedDirectory()
+                    "Selected tools have been executed and output files are saved in: "
+                            + ioController.getSharedDirectory()
             );
-        
+        });
 
+        new Thread(task).start();
+        loadingAlert.show();
     }
 
     private Map<TOOL, Runnable> actionsMap = Map.of(
