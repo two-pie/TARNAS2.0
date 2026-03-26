@@ -107,6 +107,7 @@ public class Main extends Application {
                 @Override
                 protected Boolean call() {
                     try {
+                        updateProgress(0, 1);
                         // No fine-grained progress from Docker; jump to 100% when finished
                         boolean ok = DockerController.getInstance().stopContainerByNameOrId(name1, timeoutSeconds);
                         updateProgress(1, 1);
@@ -121,6 +122,7 @@ public class Main extends Application {
                 @Override
                 protected Boolean call() {
                     try {
+                        updateProgress(0, 1);
                         boolean ok = DockerController.getInstance().stopContainerByNameOrId(name2, timeoutSeconds);
                         updateProgress(1, 1);
                         return ok;
