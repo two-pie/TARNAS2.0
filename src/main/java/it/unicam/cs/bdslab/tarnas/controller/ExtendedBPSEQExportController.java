@@ -32,12 +32,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -55,7 +50,10 @@ public class ExtendedBPSEQExportController {
         return instance;
     }
 
-    public int exportForTool(TOOL tool, Path sharedDirectory) throws IOException {
+    public int exportForTool(TOOL tool, Path sharedDirectory,
+        RNASecondaryStrucutrePrinter.OutputFormat secondaryStrcutureFormat,
+        RNASecondaryStrucutrePrinter.OutputFormat extendendStructureFormat
+    ) throws IOException {
         if (tool == null || sharedDirectory == null) return 0;
 
         List<ExportItem> structures = loadStructures(tool, sharedDirectory);
@@ -70,10 +68,17 @@ public class ExtendedBPSEQExportController {
         int exported = 0;
         for (ExportItem item : structures) {
             ensureSequence(item.structure());
-            String content = printer.printExtendedBPSEQ(item.structure());
-            String fileName = tool.getName() + "_" + sanitize(item.baseName()) + item.suffix() + ".bpseqe";
-            Path outputFile = outputDir.resolve(fileName);
-            Files.writeString(outputFile, content, StandardCharsets.UTF_8);
+            if (secondaryStrcutureFormat != null) {
+                String content = printer.printExtendedBPSEQ(item.structure());
+                String fileName = tool.getName() + "_" + sanitize(item.baseName()) + item.suffix() + ".bpseq";
+                Path outputFile = outputDir.resolve(fileName);
+                Files.writeString(outputFile, content, StandardCharsets.UTF_8);
+            } else if (extendendStructureFormat != null) {
+                String content = printer.printBPSEQ(item.structure());
+                String fileName = tool.getName() + "_" + sanitize(item.baseName()) + item.suffix() + ".bpseq";
+                Path outputFile = outputDir.resolve(fileName);
+                Files.writeString(outputFile, content, StandardCharsets.UTF_8);
+            }
             exported++;
         }
 

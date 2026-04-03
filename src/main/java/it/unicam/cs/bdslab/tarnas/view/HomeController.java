@@ -3,12 +3,16 @@ package it.unicam.cs.bdslab.tarnas.view;
 import it.unicam.cs.bdslab.tarnas.controller.DockerController;
 import it.unicam.cs.bdslab.tarnas.controller.ExtendedBPSEQExportController;
 import it.unicam.cs.bdslab.tarnas.controller.IOController;
+import it.unicam.cs.bdslab.tarnas.models.StructureInfo;
+import it.unicam.cs.bdslab.tarnas.models.StructureStatus;
+import it.unicam.cs.bdslab.tarnas.parser.output.RNASecondaryStrucutrePrinter;
 import it.unicam.cs.bdslab.tarnas.view.utils.TOOL;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
-import javafx.beans.property.BooleanProperty;
-import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.*;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -16,6 +20,7 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.control.*;
 
+import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
@@ -33,8 +38,6 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import javafx.beans.binding.Bindings;
-import javafx.beans.property.DoubleProperty;
-import javafx.beans.property.SimpleDoubleProperty;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
@@ -58,19 +61,18 @@ public class HomeController {
     private ExtendedBPSEQExportController extendedBPSEQExportController;
 
     @FXML
-    private TableView<Path> filesTable;
+    private TableView<StructureInfo> filesTable;
 
     @FXML
-    private TableColumn<Path, String> nameColumn;
-
+    private TableColumn<StructureInfo, String> nameColumn;
     @FXML
-    private TableColumn<Path, Void> deleteColumn;
-
+    private TableColumn<StructureInfo, String> chainColumn;
     @FXML
-    public CheckBox chbxSaveAsZIP;
-
+    private TableColumn<StructureInfo, Void> deleteColumn;
     @FXML
-    public TextField textFieldArchiveName;
+    private TableColumn<StructureInfo, String> statusColumn;
+    @FXML
+    private TableColumn<StructureInfo, String> errorColumn;
 
     @FXML
     public BorderPane paneTranslationCleaning;
@@ -79,12 +81,40 @@ public class HomeController {
     public BorderPane abstractionsPane;
 
     @FXML
-    public MenuButton menuBtnTools;
-
-    @FXML
     public  ListView<TOOL> toolListView;
 
-    private TOOL selectedTool;
+    @FXML
+    private Button btn_run;
+
+    @FXML
+    private Button btn_addCsv;
+
+    @FXML
+    private Label label_folder;
+
+    @FXML
+    private CheckBox ck_extractSS;
+
+    @FXML
+    private CheckBox ck_extractESS;
+
+    @FXML
+    private CheckBox ck_consensus;
+
+    @FXML
+    private ChoiceBox<RNASecondaryStrucutrePrinter.OutputFormat> select_outputSS;
+
+    @FXML
+    private ChoiceBox<RNASecondaryStrucutrePrinter.OutputFormat> select_outputESS;
+
+    private Map<TOOL, BooleanProperty> checkedItems = new HashMap<>();
+
+    private final ObservableList<StructureInfo> structures = FXCollections.observableArrayList(
+            new StructureInfo("4plx", "A", "",StructureStatus.ERROR),
+            new StructureInfo("4plx", "B", "",StructureStatus.LOADED),
+            new StructureInfo("1ymo", "A", "",StructureStatus.LOADED),
+            new StructureInfo("2k95", "A", "",StructureStatus.PROCESSED)
+    );
 
     @FXML
     public void initialize() {
@@ -93,10 +123,83 @@ public class HomeController {
         this.dockerController = DockerController.getInstance();
         this.extendedBPSEQExportController = ExtendedBPSEQExportController.getInstance();
 
-        this.initSelectEventOnButtonItems(Arrays.stream(TOOL.values()).toList());
-        this.toolListView.getItems().setAll(TOOL.values());
-        this.toolListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+        ObservableList<TOOL> tools = FXCollections.observableArrayList(TOOL.values());
+
+
+        toolListView.setItems(tools);
+
+        toolListView.setCellFactory(CheckBoxListCell.forListView(tool ->
+                checkedItems.computeIfAbsent(tool, t -> new SimpleBooleanProperty(false))
+        ));
+
+        this.filesTable.setItems(this.structures);
+
+        nameColumn.setCellValueFactory(c ->
+                new ReadOnlyStringWrapper(c.getValue().getName())
+        );
+
+        chainColumn.setCellValueFactory(x ->
+                new ReadOnlyStringWrapper(x.getValue().getChain())
+        );
+
+        statusColumn.setCellValueFactory(x ->
+                new ReadOnlyStringWrapper(x.getValue().getStatus().translate())
+        );
+
+        deleteColumn.setCellFactory(col -> new TableCell<StructureInfo, Void>() {
+            private final Button btn = new Button("Delete");
+
+            {
+                btn.setOnAction(e -> {
+                    StructureInfo item = getTableView().getItems().get(getIndex());
+                    filesTable.getItems().remove(item);
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setGraphic(null);
+                } else {
+                    setGraphic(btn);
+                }
+            }
+        });
+
+        btn_run.setDisable(true);
+
+        handleExtractSelected(ck_extractESS);
+
+        handleExtractSelected(ck_extractSS);
+
+        btn_addCsv.setOnAction((actionEvent) -> {
+            handleAddFolder();
+        });
+
+        select_outputSS.setItems(FXCollections.observableArrayList(
+                RNASecondaryStrucutrePrinter.OutputFormat.getNonExtendedFormats()
+        ));
+
+        select_outputESS.setItems(FXCollections.observableArrayList(
+                RNASecondaryStrucutrePrinter.OutputFormat.getExtendedFormats()
+        ));
+
         logger.info("Initialization done");
+    }
+
+    private void handleExtractSelected(CheckBox ckExtractX) {
+        ckExtractX.setOnAction((actionEvent) -> {
+            actionEvent.consume();
+            boolean selected = ckExtractX.isSelected();
+            if (selected) {
+                btn_run.setDisable(false);
+            } else {
+                if (!ck_extractSS.isSelected() && !ck_extractESS.isSelected()) {
+                    btn_run.setDisable(true);
+                }
+            }
+        });
     }
 
     @FXML
@@ -114,6 +217,7 @@ public class HomeController {
         if (selectedDirectory != null) {
             try {
                 var sharedDirectory = selectedDirectory.toPath();
+                label_folder.setText(sharedDirectory.toString());
                 this.ioController.loadDirectory(sharedDirectory);
                 this.initDockerContainers(sharedDirectory);
                 logger.info("Folder added successfully");
@@ -271,8 +375,11 @@ public class HomeController {
     @FXML
     public void handleRun() throws InterruptedException, IOException {
         logger.info("RUN button clicked");
-        List<TOOL> selectedTools = new ArrayList<>();
-        selectedTools.addAll(this.toolListView.getSelectionModel().getSelectedItems());
+        List<TOOL> selectedTools = checkedItems.entrySet()
+                .stream()
+                .filter(e -> e.getValue().get())
+                .map(Map.Entry::getKey)
+                .toList();
         logger.info("Selected tools: " + selectedTools);
         if (selectedTools.isEmpty()) {
             showAlert(Alert.AlertType.WARNING, "No Tool Selected", "", "Please select at least one tool to run.");
@@ -364,7 +471,9 @@ public class HomeController {
 
                     extendedBPSEQExportController.exportForTool(
                             tool,
-                            ioController.getSharedDirectory()
+                            ioController.getSharedDirectory(),
+                            ck_extractSS.isSelected() ? RNASecondaryStrucutrePrinter.OutputFormat.BPSEQ : null,
+                            ck_extractESS.isSelected() ? RNASecondaryStrucutrePrinter.OutputFormat.EXTENDED_BPSEQ : null
                     );
 
                     count++;
@@ -502,20 +611,6 @@ public class HomeController {
 
         // Show the dialog
         alertDialog.showAndWait();
-    }
-
-    private void initSelectEventOnButtonItems(List<TOOL> availableTranslations) {
-        this.menuBtnTools.getItems().clear();
-        availableTranslations.forEach(a -> {
-            var item = new MenuItem(a.getName());
-            item.setUserData(a);
-            this.menuBtnTools.getItems().add(item);
-            item.setOnAction(e -> {
-                this.selectedTool = (TOOL) ((MenuItem) e.getSource()).getUserData();
-                this.menuBtnTools.setText((((MenuItem) e.getSource()).getText())); // set String to display in MenuItem
-                this.menuBtnTools.setUserData(this.selectedTool);
-            });
-        });
     }
 
     @FXML

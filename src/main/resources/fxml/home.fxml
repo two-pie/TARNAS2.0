@@ -4,6 +4,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
 
 <BorderPane maxHeight="-Infinity" maxWidth="-Infinity" prefHeight="898.0" prefWidth="1375.0" stylesheets="@../css/home.css" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="it.unicam.cs.bdslab.tarnas.view.HomeController">
     <top>
@@ -34,10 +35,10 @@
                <bottom>
                       <TableView fx:id="filesTable" maxWidth="1172.0" minWidth="1100.0" prefHeight="266.0" prefWidth="1172.0" styleClass="table" BorderPane.alignment="CENTER">
                           <columns>
-                              <TableColumn fx:id="nameColumn" maxWidth="275.0" minWidth="275.0" prefWidth="275.0" resizable="false" styleClass="column" text="File Name" />
-                              <TableColumn fx:id="formatColumn" maxWidth="275.0" minWidth="275.0" prefWidth="275.0" resizable="false" styleClass="column" text="Format" />
-                              <TableColumn fx:id="deleteColumn" maxWidth="275.0" minWidth="275.0" prefWidth="275.0" resizable="false" styleClass="column" text="Remove" />
-                              <TableColumn fx:id="previewColumn" maxWidth="346.0" minWidth="275.0" prefWidth="346.0" resizable="false" styleClass="column" text="Preview" />
+                              <TableColumn fx:id="nameColumn" maxWidth="275.0" minWidth="275.0" prefWidth="275.0" resizable="false" styleClass="column" text="Name" />
+                              <TableColumn fx:id="chainColumn" maxWidth="275.0" minWidth="275.0" prefWidth="275.0" resizable="false" styleClass="column" text="Chain" />
+                              <TableColumn fx:id="statusColumn" maxWidth="275.0" minWidth="275.0" prefWidth="275.0" resizable="false" styleClass="column" text="Status" />
+                              <TableColumn fx:id="deleteColumn" maxWidth="346.0" minWidth="275.0" prefWidth="346.0" resizable="false" styleClass="column" text="Actions" />
                           </columns>
                           <BorderPane.margin>
                               <Insets left="50.0" right="50.0" top="10.0" />
@@ -79,7 +80,7 @@
         </BorderPane>
     </top>
    <bottom>
-        <BorderPane fx:id="paneTranslationCleaning" prefHeight="349.0" prefWidth="1202.0" stylesheets="@../css/home.css" BorderPane.alignment="CENTER">
+        <BorderPane fx:id="paneTranslationCleaning" prefHeight="196.0" prefWidth="1375.0" stylesheets="@../css/home.css" BorderPane.alignment="CENTER">
             <left>
                 <BorderPane prefHeight="153.0" prefWidth="60.0" BorderPane.alignment="CENTER" />
             </left>
@@ -126,17 +127,11 @@
                           </rowConstraints>
                            <children>
                               <ButtonBar prefHeight="30.0" prefWidth="1172.0" />
-                            <Button mnemonicParsing="false" onAction="#handleRun" prefHeight="26.0" prefWidth="101.0" text="RUN" GridPane.columnIndex="1" GridPane.halignment="CENTER" GridPane.valignment="CENTER">
+                            <Button fx:id="btn_run" mnemonicParsing="false" onAction="#handleRun" prefHeight="26.0" prefWidth="101.0" text="RUN" GridPane.columnIndex="1" GridPane.halignment="CENTER" GridPane.valignment="CENTER">
                                  <GridPane.margin>
                                     <Insets />
                                  </GridPane.margin>
                               </Button>
-                                      <TextField fx:id="textFieldArchiveName" maxWidth="90.0" minWidth="90.0" prefWidth="90.0" promptText="zip name" GridPane.columnIndex="2" GridPane.halignment="LEFT">
-                                          <GridPane.margin>
-                                              <Insets left="10.0" />
-                                          </GridPane.margin>
-                                      </TextField>
-                                      <CheckBox fx:id="chbxSaveAsZIP" mnemonicParsing="false" styleClass="checkbox" text="save as zip" GridPane.columnIndex="1" GridPane.halignment="RIGHT" />
                            </children>
                            <BorderPane.margin>
                               <Insets />
@@ -156,36 +151,68 @@
          <padding>
             <Insets top="-2.0" />
          </padding>
-         <top>
-            <MenuButton fx:id="menuBtnTools" mnemonicParsing="false" text="Choose a Tool" BorderPane.alignment="CENTER">
-              <items>
-                <MenuItem mnemonicParsing="false" text="Action 1" />
-                <MenuItem mnemonicParsing="false" text="Action 2" />
-              </items>
-            </MenuButton>
-         </top>
-         <center>
-            <HBox prefHeight="153.0" prefWidth="661.0" BorderPane.alignment="CENTER">
-               <children>
-                  <ListView fx:id="toolListView" prefHeight="153.0" prefWidth="258.0" />
-               </children>
-            </HBox>
-         </center>
         </BorderPane>
    </bottom>
    <center>
-        <BorderPane prefHeight="0.0" prefWidth="1200.0" BorderPane.alignment="CENTER">
+        <BorderPane prefHeight="83.0" prefWidth="1375.0" BorderPane.alignment="CENTER">
          <top>
                 <ButtonBar prefHeight="60.0" prefWidth="1115.0" styleClass="buttons" BorderPane.alignment="CENTER">
-                    <buttons>
-                        <Button mnemonicParsing="false" onAction="#handleAddFolder" prefHeight="5.0" prefWidth="1088.0" text="SELECT FOLDER TO SHARE" />
-                        <Button mnemonicParsing="false" onAction="#handleReset" text="RESET" />
-                    </buttons>
                <BorderPane.margin>
                   <Insets left="35.0" right="50.0" />
                </BorderPane.margin>
                 </ButtonBar>
          </top>
+         <center>
+            <HBox prefHeight="249.0" prefWidth="1289.0" BorderPane.alignment="CENTER">
+               <children>
+                  <VBox prefHeight="178.0" prefWidth="304.0">
+                     <children>
+                        <AnchorPane prefHeight="200.0" prefWidth="200.0">
+                           <children>
+                              <Label fx:id="label_folder" layoutY="100.0" prefHeight="38.0" prefWidth="289.0" text="Folder: /Data" />
+                              <Button fx:id="btn_addCsv" layoutY="29.0" mnemonicParsing="false" prefHeight="30.0" prefWidth="247.0" text="Add CSV Molecules List " />
+                           </children>
+                        </AnchorPane>
+                     </children>
+                  </VBox>
+                   <VBox alignment="TOP_CENTER">
+                       <Label layoutX="131.0" layoutY="6.0" text="Tools">
+                        <font>
+                           <Font name="System Bold" size="16.0" />
+                        </font></Label>
+                       <ListView fx:id="toolListView" prefHeight="175.0" prefWidth="258.0" />
+                   </VBox>
+                  <AnchorPane prefHeight="249.0" prefWidth="364.0">
+                     <children>
+                        <Label layoutX="131.0" layoutY="6.0" prefHeight="26.0" prefWidth="87.0" text="Extraction">
+                           <font>
+                              <Font name="System Bold" size="16.0" />
+                           </font></Label>
+                        <CheckBox fx:id="ck_extractSS" layoutX="14.0" layoutY="35.0" mnemonicParsing="false" text="Extract Secondary Structure " />
+                        <CheckBox fx:id="ck_extractESS" layoutX="14.0" layoutY="67.0" mnemonicParsing="false" text="Extract  Extended Secondary Structure " />
+                        <Label layoutX="107.0" layoutY="108.0" text="Select consensus" />
+                        <CheckBox fx:id="ck_consensus" layoutX="14.0" layoutY="136.0" mnemonicParsing="false" prefHeight="18.0" prefWidth="237.0" text="Add Consensus  Structure " />
+                     </children>
+                  </AnchorPane>
+                  <AnchorPane prefHeight="255.0" prefWidth="351.0">
+                     <children>
+                        <Label layoutX="115.0" layoutY="6.0" prefHeight="16.0" prefWidth="132.0" text="Output format">
+                           <font>
+                              <Font name="System Bold" size="16.0" />
+                           </font></Label>
+                        <ChoiceBox fx:id="select_outputSS" layoutX="174.0" layoutY="39.0" prefHeight="26.0" prefWidth="151.0" />
+                        <ChoiceBox fx:id="select_outputESS" layoutX="175.0" layoutY="140.0" prefHeight="26.0" prefWidth="149.0" />
+                        <Label layoutX="14.0" layoutY="44.0" text="Secondary Strcuture" />
+                        <Label layoutX="18.0" layoutY="136.0" text="Extended Secondary" />
+                        <Label layoutX="18.0" layoutY="154.0" text="Strcuture" />
+                     </children>
+                  </AnchorPane>
+               </children>
+            </HBox>
+         </center>
+         <BorderPane.margin>
+            <Insets left="50.0" right="50.0" />
+         </BorderPane.margin>
         </BorderPane>
    </center>
 </BorderPane>
