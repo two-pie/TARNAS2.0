@@ -189,9 +189,12 @@
                               <Font name="System Bold" size="16.0" />
                            </font></Label>
                         <CheckBox fx:id="ck_extractSS" layoutX="14.0" layoutY="35.0" mnemonicParsing="false" text="Extract Secondary Structure " />
-                        <CheckBox fx:id="ck_extractESS" layoutX="14.0" layoutY="67.0" mnemonicParsing="false" text="Extract  Extended Secondary Structure " />
-                        <Label layoutX="107.0" layoutY="108.0" text="Select consensus" />
-                        <CheckBox fx:id="ck_consensus" layoutX="14.0" layoutY="136.0" mnemonicParsing="false" prefHeight="18.0" prefWidth="237.0" text="Add Consensus  Structure " />
+                        <CheckBox fx:id="ck_extractESS" layoutX="14.0" layoutY="67.0" mnemonicParsing="false" text="Extract Extended Secondary Structure " />
+                        <Label layoutX="107.0" layoutY="108.0" text="Select consensus">
+                           <font>
+                              <Font name="System Bold" size="16.0" />
+                           </font></Label>
+                        <CheckBox fx:id="ck_consensus" layoutX="14.0" layoutY="136.0" mnemonicParsing="false" prefHeight="18.0" prefWidth="237.0" text="Add Consensus Structure " />
                      </children>
                   </AnchorPane>
                   <AnchorPane prefHeight="255.0" prefWidth="351.0">
