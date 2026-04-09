@@ -29,4 +29,9 @@ public enum TOOL {
     public String getFileNameToParse(String pdbId, String chainId) {
         return String.format("%s_%s.out", pdbId, chainId);
     }
+
+    @Override
+    public String toString() {
+        return name.replaceAll("_", " ");
+    }
 }
