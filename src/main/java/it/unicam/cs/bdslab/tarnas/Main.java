@@ -34,50 +34,30 @@ import java.util.logging.Logger;
  * @author Piero Hierro, Piermichele Rosati
  */
 
-// TODO: check text inside alert
-
 public class Main extends Application {
-
+    public static Main instance;
     public static final Logger logger = Logger.getLogger("it.unicam.cs.bdslab.tarnas.main");
+    private Stage stage;
 
     @Override
     public void start(Stage stage) throws IOException, URISyntaxException {
-        FXMLLoader loader = new FXMLLoader(Objects.requireNonNull(Main.class.getResource("/fxml/home.fxml")));
-        Parent root = loader.load();
-        stage.setTitle("EXTRARNAS");
-        stage.getIcons().add(new Image(String.valueOf(App.class.getResource("/img/tarnas-icon.png").toURI())));
-        stage.setScene(new Scene(root));
-        stage.setMinWidth(1300);
-        stage.setMinHeight(700);
-
-        stage.setOnCloseRequest(event -> {
-            event.consume(); // Prevent automatic closing
-
-            if (showCloseConfirmation()) {
-                try {
-                    this.stop(); // Call your method that stops containers and cleans up
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-                logger.info("Closing the app...");
-                Platform.exit();
-            }
-
-        });
-
-        stage.show();
+        instance = this;
+        this.stage = stage;
+        this.openSetup();
     }
 
     /**
      * Shows ONE alert while stopping both containers. The dialog stays open
-     * until both stops finish (success or failure). At 100% the Close button is enabled
+     * until both stops finish (success or failure). At 100% the Close button is
+     * enabled
      * and the dialog auto-closes after a short delay.
      * <p>
      * Call this from Main.stop() like:
      * stopBothContainersWithOneAlert("x3dna-container", "all-tools-container", 10);
      */
     public void stopBothContainersWithOneAlert(String name1, String name2, Integer timeoutSeconds) {
-        if (DockerController.getInstance().isContainerRunning(HomeController.dockerAllToolsContainer) && DockerController.getInstance().isContainerRunning(HomeController.dockerX3DNAContainer)) {
+        if (DockerController.getInstance().isContainerRunning(HomeController.dockerAllToolsContainer)
+                && DockerController.getInstance().isContainerRunning(HomeController.dockerX3DNAContainer)) {
             // Build the alert UI
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("Stopping Docker Containers");
@@ -99,7 +79,8 @@ public class Main extends Application {
             // Prevent closing before both are done
             final BooleanProperty done = new SimpleBooleanProperty(false);
             alert.setOnCloseRequest(ev -> {
-                if (!done.get()) ev.consume();
+                if (!done.get())
+                    ev.consume();
             });
 
             // Two background tasks: stop by name/ID and mark progress at 100% on completion
@@ -138,8 +119,7 @@ public class Main extends Application {
             bar.progressProperty().bind(combined);
             percent.textProperty().bind(Bindings.createStringBinding(
                     () -> Math.min(100, (int) Math.round(combined.get() * 100)) + "%",
-                    combined
-            ));
+                    combined));
 
             // When BOTH tasks finish, finalize UI
             Runnable onAllDone = () -> {
@@ -156,7 +136,8 @@ public class Main extends Application {
                     percent.textProperty().unbind();
                     percent.setText("100%");
 
-                    // Auto-close after a short beat (optional). Remove if you want manual close only.
+                    // Auto-close after a short beat (optional). Remove if you want manual close
+                    // only.
                     new Timeline(new KeyFrame(javafx.util.Duration.millis(900), e -> alert.close())).play();
                 }
             };
@@ -177,8 +158,10 @@ public class Main extends Application {
             pool.submit(t1);
             pool.submit(t2);
 
-            // Show ONE modal alert and wait until it's closed (which happens when both tasks are done)
-            // Because tasks are background, the dialog remains responsive and updates progress.
+            // Show ONE modal alert and wait until it's closed (which happens when both
+            // tasks are done)
+            // Because tasks are background, the dialog remains responsive and updates
+            // progress.
             alert.showAndWait();
 
             // Cleanup executor
@@ -211,10 +194,59 @@ public class Main extends Application {
 
     @Override
     public void stop() {
-        this.stopBothContainersWithOneAlert(HomeController.dockerAllToolsContainer, HomeController.dockerX3DNAContainer, 10);
+        this.stopBothContainersWithOneAlert(HomeController.dockerAllToolsContainer, HomeController.dockerX3DNAContainer,
+                10);
     }
 
     public static void main(String[] args) {
         launch();
+    }
+
+    public void openSetup() {
+        try {
+            load(stage, "/fxml/setup.fxml");
+            stage.show();
+        } catch (IOException | URISyntaxException e) {
+            logger.severe("Failed to open setup: " + e.getMessage());
+        }
+    }
+
+    public void openHome() {
+        try {
+            stage = load(stage, "/fxml/home.fxml");
+            stage.setMinWidth(1300);
+            stage.setMinHeight(700);
+
+            stage.setOnCloseRequest(event -> {
+                event.consume();
+
+                if (showCloseConfirmation()) {
+                    try {
+                        this.stop();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                    logger.info("Closing the app...");
+                    Platform.exit();
+                }
+
+            });
+
+            stage.show();
+        } catch (IOException | URISyntaxException e) {
+            logger.severe("Failed to open home: " + e.getMessage());
+        }
+    }
+
+    private static Stage load(Stage stage, String path) throws IOException, URISyntaxException {
+        FXMLLoader loader = new FXMLLoader(Objects.requireNonNull(Main.class.getResource(path)));
+        Parent root = loader.load();
+        if (stage == null) {
+            stage = new Stage();
+        }
+        stage.setTitle("EXTRARNAS");
+        stage.getIcons().add(new Image(String.valueOf(App.class.getResource("/img/tarnas-icon.png").toURI())));
+        stage.setScene(new Scene(root));
+        return stage;
     }
 }

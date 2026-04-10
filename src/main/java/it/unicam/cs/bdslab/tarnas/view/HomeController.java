@@ -16,8 +16,6 @@ import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.TextField;
 import javafx.scene.control.*;
 
 import javafx.scene.control.cell.CheckBoxListCell;
@@ -81,7 +79,7 @@ public class HomeController {
     public BorderPane abstractionsPane;
 
     @FXML
-    public  ListView<TOOL> toolListView;
+    public ListView<TOOL> toolListView;
 
     @FXML
     private Button btn_run;
@@ -110,11 +108,10 @@ public class HomeController {
     private Map<TOOL, BooleanProperty> checkedItems = new HashMap<>();
 
     private final ObservableList<StructureInfo> structures = FXCollections.observableArrayList(
-            new StructureInfo("4plx", "A", "",StructureStatus.ERROR),
-            new StructureInfo("4plx", "B", "",StructureStatus.LOADED),
-            new StructureInfo("1ymo", "A", "",StructureStatus.LOADED),
-            new StructureInfo("2k95", "A", "",StructureStatus.PROCESSED)
-    );
+            new StructureInfo("4plx", "A", "", StructureStatus.ERROR),
+            new StructureInfo("4plx", "B", "", StructureStatus.LOADED),
+            new StructureInfo("1ymo", "A", "", StructureStatus.LOADED),
+            new StructureInfo("2k95", "A", "", StructureStatus.PROCESSED));
 
     @FXML
     public void initialize() {
@@ -123,28 +120,25 @@ public class HomeController {
         this.dockerController = DockerController.getInstance();
         this.extendedBPSEQExportController = ExtendedBPSEQExportController.getInstance();
 
-        ObservableList<TOOL> tools = FXCollections.observableArrayList(TOOL.values());
+        if (this.ioController.getSharedDirectory() != null) {
+            label_folder.setText("Folder: " + this.ioController.getSharedDirectory());
+            this.initDockerContainers(this.ioController.getSharedDirectory());
+        }
 
+        ObservableList<TOOL> tools = FXCollections.observableArrayList(TOOL.values());
 
         toolListView.setItems(tools);
 
-        toolListView.setCellFactory(CheckBoxListCell.forListView(tool ->
-                checkedItems.computeIfAbsent(tool, t -> new SimpleBooleanProperty(false))
-        ));
+        toolListView.setCellFactory(CheckBoxListCell
+                .forListView(tool -> checkedItems.computeIfAbsent(tool, t -> new SimpleBooleanProperty(false))));
 
         this.filesTable.setItems(this.structures);
 
-        nameColumn.setCellValueFactory(c ->
-                new ReadOnlyStringWrapper(c.getValue().getName())
-        );
+        nameColumn.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getName()));
 
-        chainColumn.setCellValueFactory(x ->
-                new ReadOnlyStringWrapper(x.getValue().getChain())
-        );
+        chainColumn.setCellValueFactory(x -> new ReadOnlyStringWrapper(x.getValue().getChain()));
 
-        statusColumn.setCellValueFactory(x ->
-                new ReadOnlyStringWrapper(x.getValue().getStatus().translate())
-        );
+        statusColumn.setCellValueFactory(x -> new ReadOnlyStringWrapper(x.getValue().getStatus().translate()));
 
         deleteColumn.setCellFactory(col -> new TableCell<StructureInfo, Void>() {
             private final Button btn = new Button("Delete");
@@ -178,12 +172,10 @@ public class HomeController {
         });
 
         select_outputSS.setItems(FXCollections.observableArrayList(
-                RNASecondaryStrucutrePrinter.OutputFormat.getNonExtendedFormats()
-        ));
+                RNASecondaryStrucutrePrinter.OutputFormat.getNonExtendedFormats()));
 
         select_outputESS.setItems(FXCollections.observableArrayList(
-                RNASecondaryStrucutrePrinter.OutputFormat.getExtendedFormats()
-        ));
+                RNASecondaryStrucutrePrinter.OutputFormat.getExtendedFormats()));
 
         logger.info("Initialization done");
     }
@@ -248,7 +240,8 @@ public class HomeController {
         // prevent closing before done
         final BooleanProperty done = new SimpleBooleanProperty(false);
         loadingAlert.setOnCloseRequest(ev -> {
-            if (!done.get()) ev.consume();
+            if (!done.get())
+                ev.consume();
         });
 
         loadingAlert.show();
@@ -267,8 +260,7 @@ public class HomeController {
                     // ease toward the target
                     double next = cur + Math.min(0.02, Math.max(0.005, (target - cur) * 0.20));
                     driver.set(Math.min(next, target));
-                })
-        );
+                }));
         ticker.setCycleCount(Animation.INDEFINITE);
         ticker.play();
 
@@ -283,8 +275,7 @@ public class HomeController {
                 return dockerController.buildDockerContainerBy(
                         new File(dockerfileAllToolsPath),
                         dockerAllToolsImage, dockerAllToolsImageTag,
-                        dockerAllToolsContainer, sharedFolder
-                );
+                        dockerAllToolsContainer, sharedFolder);
             }
         };
 
@@ -294,8 +285,7 @@ public class HomeController {
                 return dockerController.buildxDockerContainerBy(
                         new File(dockerfileX3DNAPath),
                         dockerX3DNAImage, dockerX3DNAImageTag,
-                        dockerX3DNAContainer
-                );
+                        dockerX3DNAContainer);
             }
         };
 
@@ -340,8 +330,7 @@ public class HomeController {
                         new KeyFrame(Duration.millis(5100), ae -> {
                             ticker.stop();
                             loadingAlert.close();
-                        })
-                );
+                        }));
                 finish.play();
             } else {
                 ticker.stop();
@@ -364,7 +353,6 @@ public class HomeController {
         // kick off
         new Thread(taskBuild, "docker-build").start();
     }
-
 
     @FXML
     public void handleReset() {
@@ -393,29 +381,8 @@ public class HomeController {
             return;
         }
 
-        this.executeCommand(new HashSet<>(selectedTools), true);
-
-
-//        Runnable action = actionsMap.get(this.selectedTool);
-//
-//        if (action != null) {
-//            action.run();
-//            int generatedFiles = this.extendedBPSEQExportController.exportForTool(this.selectedTool, this.ioController.getSharedDirectory());
-//            showAlert(
-//                    Alert.AlertType.INFORMATION,
-//                    this.selectedTool.getName() + " Tool",
-//                    "",
-//                "Output saved in " + this.ioController.getSharedDirectory()
-//                    + "\nExtended BPSEQ files generated: " + generatedFiles
-//                    + "\nFolder: " + this.extendedBPSEQExportController.getOutputDirectory(this.ioController.getSharedDirectory())
-//            );
-//            logger.info(this.selectedTool.getName().toUpperCase() + " TOOL EXECUTED");
-//        } else {
-//            showAlert(Alert.AlertType.ERROR, "Tool Error", "", "No action defined for selected tool.");
-//            logger.warning("No action defined for tool: " + this.selectedTool);
-//        }
+        this.executeCommand(new HashSet<>(selectedTools), true);W
     }
-
 
     private Stage getPrimaryStage() {
         return (Stage) this.filesTable.getScene().getWindow();
@@ -434,9 +401,12 @@ public class HomeController {
     /**
      * This method can be used to execute the pipeline:
      * 1. Execute the selected tools (e.g., RNAPolis Annotator, RNAView...)
-     * 2. Generate extended BPSEQ or normal BPSEQ files based on the output of the tools and the user's choice.
-     * @param selectedTools the set of tools selected by the user to run
-     * @param outputExtendedBPSEQ if the output format should be extended BPSEQ (true) or normal BPSEQ (false)
+     * 2. Generate extended BPSEQ or normal BPSEQ files based on the output of the
+     * tools and the user's choice.
+     * 
+     * @param selectedTools       the set of tools selected by the user to run
+     * @param outputExtendedBPSEQ if the output format should be extended BPSEQ
+     *                            (true) or normal BPSEQ (false)
      */
     private void executeCommand(Set<TOOL> selectedTools, boolean outputExtendedBPSEQ) {
 
@@ -473,8 +443,8 @@ public class HomeController {
                             tool,
                             ioController.getSharedDirectory(),
                             ck_extractSS.isSelected() ? RNASecondaryStrucutrePrinter.OutputFormat.BPSEQ : null,
-                            ck_extractESS.isSelected() ? RNASecondaryStrucutrePrinter.OutputFormat.EXTENDED_BPSEQ : null
-                    );
+                            ck_extractESS.isSelected() ? RNASecondaryStrucutrePrinter.OutputFormat.EXTENDED_BPSEQ
+                                    : null);
 
                     count++;
                     updateProgress(count, total);
@@ -487,8 +457,7 @@ public class HomeController {
         // Bind UI
         bar.progressProperty().bind(task.progressProperty());
         percent.textProperty().bind(
-                task.progressProperty().multiply(100).asString("%.0f%%")
-        );
+                task.progressProperty().multiply(100).asString("%.0f%%"));
 
         title.textProperty().bind(task.messageProperty());
 
@@ -500,8 +469,7 @@ public class HomeController {
                     "Process Completed",
                     "",
                     "Selected tools have been executed and output files are saved in: "
-                            + ioController.getSharedDirectory()
-            );
+                            + ioController.getSharedDirectory());
         });
 
         new Thread(task).start();
@@ -509,59 +477,58 @@ public class HomeController {
     }
 
     private Map<TOOL, Runnable> actionsMap = Map.of(
-        RNAPOLIS_ANNOTATOR, () -> {
-            try {
-                this.dockerController.rnapolisAnnotator();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        },
-        RNAVIEW, () -> {
-            try {
-                this.dockerController.rnaView();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        },
-        BARNABA, () -> {
-            try {
-                this.dockerController.baRNAba();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        },
-        BPNET, () -> {
-            try {
-                this.dockerController.bpnet();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        },
-        FR3D, () -> {
-            try {
-                this.dockerController.fr3d();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        },
-        X3DNA, () -> {
-            try {
-                this.dockerController.x3dnaBy(dockerX3DNAContainer);
-            } catch (InterruptedException | IOException e) {
-                throw new RuntimeException(e);
-            }
-        },
-        MC_ANNOTATE, () -> {
-            try {
-                this.dockerController.mcAnnotate();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    );
+            RNAPOLIS_ANNOTATOR, () -> {
+                try {
+                    this.dockerController.rnapolisAnnotator();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            },
+            RNAVIEW, () -> {
+                try {
+                    this.dockerController.rnaView();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            },
+            BARNABA, () -> {
+                try {
+                    this.dockerController.baRNAba();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            },
+            BPNET, () -> {
+                try {
+                    this.dockerController.bpnet();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            },
+            FR3D, () -> {
+                try {
+                    this.dockerController.fr3d();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            },
+            X3DNA, () -> {
+                try {
+                    this.dockerController.x3dnaBy(dockerX3DNAContainer);
+                } catch (InterruptedException | IOException e) {
+                    throw new RuntimeException(e);
+                }
+            },
+            MC_ANNOTATE, () -> {
+                try {
+                    this.dockerController.mcAnnotate();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            });
 
     /**
-
+     * 
      * General method to display a resizable Alert dialog with HTML content.
      *
      * @param title       The title of the Alert dialog.
@@ -585,11 +552,11 @@ public class HomeController {
 
         // Adjust WebView size when the dialog is resized
         alertDialog.widthProperty().addListener((obs, oldVal, newVal) -> {
-            webView.setPrefWidth(newVal.doubleValue() - 50);  // Adjust width
+            webView.setPrefWidth(newVal.doubleValue() - 50); // Adjust width
         });
 
         alertDialog.heightProperty().addListener((obs, oldVal, newVal) -> {
-            webView.setPrefHeight(newVal.doubleValue() - 100);  // Adjust height
+            webView.setPrefHeight(newVal.doubleValue() - 100); // Adjust height
         });
 
         // Intercept navigation requests and open them in the system's default browser
@@ -597,12 +564,13 @@ public class HomeController {
             if (newLocation != null && newLocation.startsWith("http")) {
                 try {
                     if (Desktop.isDesktopSupported()) {
-                        Desktop.getDesktop().browse(new URI(newLocation));  // Open the URL in the default system browser
+                        Desktop.getDesktop().browse(new URI(newLocation)); // Open the URL in the default system browser
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                webEngine.loadContent(htmlContent);  // Prevent navigation in the WebView by reloading the original content
+                webEngine.loadContent(htmlContent); // Prevent navigation in the WebView by reloading the original
+                                                    // content
             }
         });
 
@@ -727,15 +695,15 @@ public class HomeController {
                 <h2>Contact Us</h2>
                         <b class="bigger_text">TARNAS has been realised within the <a href="http://www.emanuelamerelli.eu/bigdata/doku.php" target="_blank">BioShape and Data Science Lab</a> with the contribution of Piero Jean Pier Hierro Canchari, Michela Quadrini, Piermichele Rosati and Luca Tesei.</b>
                         <p>Lab website: <a href="https://bdslab.unicam.it" target="_blank">https://bdslab.unicam.it</a></p>
-                
+
                         <p>RNA2Fun Project website: <a href="https://bdslab.unicam.it/rna2fun/" target="_blank">https://bdslab.unicam.it/rna2fun/</a></p>
-                
+
                         <b class="bigger_text">For any issue, please contact:</b>
                         <p>Prof. Luca Tesei</p>
                         <p>email: luca.tesei&#64;unicam.it</p>
-                
+
                         <p>address: School of Sciences and Technology, Via Madonna delle Carceri 7, 62032, Camerino (MC), Italy</p>
-                
+
                         <p>Personal website: <a href="http://www.lucatesei.com" target="_blank">http://www.lucatesei.com</a></p>
                 """;
         showAlertWithContent("About TARNAS", "Contact Us", contactUsContent);
