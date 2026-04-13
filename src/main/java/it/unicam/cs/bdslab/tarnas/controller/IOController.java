@@ -1,14 +1,16 @@
 package it.unicam.cs.bdslab.tarnas.controller;
 
+import it.unicam.cs.bdslab.tarnas.models.StructureInfo;
+import it.unicam.cs.bdslab.tarnas.models.StructureStatus;
+
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 /**
  * Singleton controller for loading, saving, and packaging RNA files.
@@ -35,6 +37,51 @@ public class IOController {
 
     public Path getSharedDirectory() {
         return this.sharedDirectory;
+    }
+
+    /**
+     * Loads molecules from a CSV file where col0 is molecule ID and col1 is chain filter.
+     */
+    public List<StructureInfo> loadMoleculesFromCsv(Path csvPath) throws IOException {
+        if (csvPath == null || !Files.isRegularFile(csvPath)) {
+            throw new IOException("CSV file not found: " + csvPath);
+        }
+
+        List<StructureInfo> result = new ArrayList<>();
+        LinkedHashSet<String> seenRows = new LinkedHashSet<>();
+
+        try (BufferedReader br = Files.newBufferedReader(csvPath, StandardCharsets.UTF_8)) {
+            String line;
+            boolean headerSkipped = false;
+
+            while ((line = br.readLine()) != null) {
+                if (line.isBlank()) continue;
+
+                if (!headerSkipped && looksLikeHeader(line)) {
+                    headerSkipped = true;
+                    continue;
+                }
+
+                String[] cols = line.split(",", -1);
+                if (cols.length < 2) continue;
+
+                String moleculeId = cols[0].trim();
+                String chain = cols[1].trim();
+                if (moleculeId.isEmpty() || chain.isEmpty()) continue;
+
+                String dedupKey = moleculeId + "|" + chain;
+                if (seenRows.add(dedupKey)) {
+                    result.add(new StructureInfo(moleculeId, chain, csvPath.toString(), StructureStatus.LOADED));
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private boolean looksLikeHeader(String line) {
+        String lower = line.toLowerCase();
+        return lower.contains("id") || lower.contains("chain");
     }
 
     /**

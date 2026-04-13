@@ -4,7 +4,6 @@ import it.unicam.cs.bdslab.tarnas.controller.DockerController;
 import it.unicam.cs.bdslab.tarnas.controller.ExtendedBPSEQExportController;
 import it.unicam.cs.bdslab.tarnas.controller.IOController;
 import it.unicam.cs.bdslab.tarnas.models.StructureInfo;
-import it.unicam.cs.bdslab.tarnas.models.StructureStatus;
 import it.unicam.cs.bdslab.tarnas.parser.output.RNASecondaryStrucutrePrinter;
 import it.unicam.cs.bdslab.tarnas.view.utils.TOOL;
 import javafx.animation.Animation;
@@ -22,7 +21,6 @@ import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
-import javafx.stage.DirectoryChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -31,6 +29,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
+import javafx.application.Platform;
 import java.util.*;
 import java.util.List;
 import java.util.logging.Logger;
@@ -39,6 +38,7 @@ import javafx.beans.binding.Bindings;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
+import javafx.stage.FileChooser;
 
 import static it.unicam.cs.bdslab.tarnas.view.utils.TOOL.*;
 
@@ -108,11 +108,7 @@ public class HomeController {
     private Map<TOOL, BooleanProperty> checkedItems = new HashMap<>();
     private boolean x3dnaAvailable = true;
 
-    private final ObservableList<StructureInfo> structures = FXCollections.observableArrayList(
-            new StructureInfo("4plx", "A", "", StructureStatus.ERROR),
-            new StructureInfo("4plx", "B", "", StructureStatus.LOADED),
-            new StructureInfo("1ymo", "A", "", StructureStatus.LOADED),
-            new StructureInfo("2k95", "A", "", StructureStatus.PROCESSED));
+    private final ObservableList<StructureInfo> structures = FXCollections.observableArrayList();
 
     @FXML
     public void initialize() {
@@ -123,7 +119,7 @@ public class HomeController {
 
         if (this.ioController.getSharedDirectory() != null) {
             label_folder.setText("Folder: " + this.ioController.getSharedDirectory());
-            this.initDockerContainers(this.ioController.getSharedDirectory());
+            this.initDockerContainers(this.ioController.getSharedDirectory(), null);
         }
 
         refreshToolListAvailability();
@@ -167,7 +163,7 @@ public class HomeController {
         handleExtractSelected(ck_extractSS);
 
         btn_addCsv.setOnAction((actionEvent) -> {
-            handleAddFolder();
+            handleAddMoleculesList();
         });
 
         select_outputSS.setItems(FXCollections.observableArrayList(
@@ -201,25 +197,38 @@ public class HomeController {
     }
 
     @FXML
-    public void handleAddFolder() {
-        logger.info("ADD FOLDER button clicked");
-        var directoryChooser = new DirectoryChooser();
-        var selectedDirectory = directoryChooser.showDialog(this.getPrimaryStage());
-        if (selectedDirectory != null) {
-            try {
-                var sharedDirectory = selectedDirectory.toPath();
-                label_folder.setText(sharedDirectory.toString());
-                this.ioController.loadDirectory(sharedDirectory);
-                this.initDockerContainers(sharedDirectory);
-                logger.info("Folder added successfully");
-            } catch (Exception e) {
-                showAlert(Alert.AlertType.ERROR, "", "", e.getMessage());
-            }
+    public void handleAddMoleculesList() {
+        logger.info("ADD CSV MOLECULES LIST button clicked");
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Select CSV molecules list");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV files", "*.csv"));
+
+        Path currentDirectory = ioController.getSharedDirectory();
+        if (currentDirectory != null && currentDirectory.toFile().isDirectory()) {
+            fileChooser.setInitialDirectory(currentDirectory.toFile());
         }
-        logger.info("Exit add file");
+
+        File selectedCsv = fileChooser.showOpenDialog(this.getPrimaryStage());
+        if (selectedCsv == null) {
+            logger.info("No CSV selected");
+            return;
+        }
+
+        try {
+            Path csvPath = selectedCsv.toPath();
+            Path sharedDirectory = csvPath.getParent();
+            label_folder.setText("Folder: " + sharedDirectory);
+            this.ioController.loadDirectory(sharedDirectory);
+            this.initDockerContainers(sharedDirectory, csvPath);
+        } catch (Exception e) {
+            showAlert(Alert.AlertType.ERROR, "CSV load error", "", e.getMessage());
+        }
+
+        logger.info("Exit add molecules list");
     }
 
-    private void initDockerContainers(Path sharedFolder) {
+    private void initDockerContainers(Path sharedFolder, Path csvPathToProcess) {
         refreshToolListAvailability();
 
         // Dialog with a Close button (we'll enable it at 100%)
@@ -299,6 +308,29 @@ public class HomeController {
         taskBuild.setOnSucceeded(e -> {
             Integer r1 = taskBuild.getValue();
             if (r1 != null && r1 == 1) {
+                if (csvPathToProcess != null) {
+                    Task<List<StructureInfo>> preprocessTask = new Task<>() {
+                        @Override
+                        protected List<StructureInfo> call() throws Exception {
+                            return dockerController.preprocessCsvAndCollectStructures(sharedFolder, csvPathToProcess);
+                        }
+                    };
+
+                    preprocessTask.setOnSucceeded(ev -> {
+                        List<StructureInfo> generatedStructures = preprocessTask.getValue();
+                        structures.setAll(generatedStructures);
+                        logger.info("Loaded " + generatedStructures.size() + " molecules from preprocessed output");
+                    });
+
+                    preprocessTask.setOnFailed(ev -> Platform.runLater(() ->
+                            showAlert(Alert.AlertType.ERROR, "CSV preprocessing error", "",
+                                    Optional.ofNullable(preprocessTask.getException())
+                                            .map(Throwable::getMessage)
+                                            .orElse("Unknown preprocessing error"))));
+
+                    new Thread(preprocessTask, "csv-preprocess").start();
+                }
+
                 if (x3dnaAvailable) {
                     title.setText("Building Docker images… (step 2/2)");
                     to95.run();

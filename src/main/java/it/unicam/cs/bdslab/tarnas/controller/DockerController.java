@@ -10,6 +10,8 @@ import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.core.command.ExecStartResultCallback;
 import com.github.dockerjava.transport.DockerHttpClient;
 import com.github.dockerjava.zerodep.ZerodepDockerHttpClient;
+import it.unicam.cs.bdslab.tarnas.models.StructureInfo;
+import it.unicam.cs.bdslab.tarnas.models.StructureStatus;
 import org.apache.commons.csv.CSVFormat;
 import org.biojava.nbio.structure.Structure;
 
@@ -97,19 +99,20 @@ public class DockerController {
         // bundles folder
         makeDirInContainer(container.getId(), bundlesPath);
 
+        // NOW IS HANDLED BY HOME CONTROLLER
         // --- process exactly ONE CSV in sharedFolder ---
-        Path csv = pickSingleCsv();
-        if (csv == null) {
-            logger.info("No CSV file found in " + sharedFolder + " — nothing to process.");
-            return 0;
-        }
-        logger.info("Using CSV: " + csv.getFileName());
+        // Path csv = pickSingleCsv();
+        // if (csv == null) {
+        //     logger.info("No CSV file found in " + sharedFolder + " — nothing to process.");
+        //     return 0;
+        // }
+        // logger.info("Using CSV: " + csv.getFileName());
 
-        processCsvAndFilterPdbs(csv);
+        // processCsvAndFilterPdbs(csv);
         return 1;
     }
 
-    private void makeDirInContainer(String containerId, String dir) throws IOException, InterruptedException {
+private void makeDirInContainer(String containerId, String dir) throws IOException, InterruptedException {
         String[] mkdirCmd = {"mkdir", "-p", dir};
         ExecCreateCmdResponse execCreate = dockerClient.execCreateCmd(containerId)
                 .withAttachStdout(true)
@@ -216,6 +219,44 @@ public class DockerController {
     private static boolean looksLikeHeader(String line) {
         String lower = line.toLowerCase(Locale.ROOT);
         return lower.contains("id") || lower.contains("chain");
+    }
+
+    public List<StructureInfo> preprocessCsvAndCollectStructures(Path sharedFolder, Path csvFile) throws IOException {
+        Objects.requireNonNull(sharedFolder, "sharedFolder");
+        Objects.requireNonNull(csvFile, "csvFile");
+
+        if (!Files.isRegularFile(csvFile)) {
+            throw new IOException("CSV file not found: " + csvFile);
+        }
+
+        this.sharedFolder = sharedFolder;
+        processCsvAndFilterPdbs(csvFile);
+        return collectStructuresFromPreprocessed(sharedFolder.resolve("preprocessed"));
+    }
+
+    private List<StructureInfo> collectStructuresFromPreprocessed(Path preprocessedFolder) throws IOException {
+        if (!Files.isDirectory(preprocessedFolder)) {
+            return List.of();
+        }
+
+        List<StructureInfo> result = new ArrayList<>();
+        try (DirectoryStream<Path> ds = Files.newDirectoryStream(preprocessedFolder, "*.pdb")) {
+            for (Path p : ds) {
+                String fileName = p.getFileName().toString();
+                String baseName = fileName.substring(0, fileName.length() - 4);
+                String[] parts = baseName.split("_");
+
+                String moleculeId = parts.length > 0 ? parts[0] : baseName;
+                String chain = parts.length > 1
+                        ? String.join("_", Arrays.copyOfRange(parts, 1, parts.length))
+                        : "";
+
+                result.add(new StructureInfo(moleculeId, chain, preprocessedFolder.toString(), StructureStatus.LOADED));
+            }
+        }
+
+        result.sort(Comparator.comparing(StructureInfo::getName).thenComparing(StructureInfo::getChain));
+        return result;
     }
 
     public int buildxDockerContainerBy(File dockerFile, String imageName, String imageTag, String containerName) throws IOException, InterruptedException {
