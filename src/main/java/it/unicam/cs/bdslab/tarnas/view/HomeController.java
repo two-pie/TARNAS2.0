@@ -15,6 +15,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.*;
 
 import javafx.scene.control.cell.CheckBoxListCell;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.web.WebEngine;
@@ -128,9 +130,21 @@ public class HomeController {
         statusColumn.setCellValueFactory(x -> new ReadOnlyStringWrapper(x.getValue().getStatus().translate()));
 
         deleteColumn.setCellFactory(col -> new TableCell<StructureInfo, Void>() {
-            private final Button btn = new Button("Delete");
+            private final Button btn = new Button();
 
             {
+                Image trashImage = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/trash.png")));
+                ImageView trashIcon = new ImageView(trashImage);
+                trashIcon.setFitWidth(16);
+                trashIcon.setFitHeight(16);
+                trashIcon.setPreserveRatio(true);
+
+                btn.setGraphic(trashIcon);
+                btn.setText(null);
+                btn.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+                btn.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
+                btn.setTooltip(new Tooltip("Delete"));
+
                 btn.setOnAction(e -> {
                     StructureInfo item = getTableView().getItems().get(getIndex());
                     filesTable.getItems().remove(item);
