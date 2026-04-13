@@ -6,9 +6,6 @@ import it.unicam.cs.bdslab.tarnas.controller.IOController;
 import it.unicam.cs.bdslab.tarnas.models.StructureInfo;
 import it.unicam.cs.bdslab.tarnas.parser.output.RNASecondaryStrucutrePrinter;
 import it.unicam.cs.bdslab.tarnas.view.utils.TOOL;
-import javafx.animation.Animation;
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -19,25 +16,21 @@ import javafx.scene.control.*;
 
 import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-import java.awt.*;
+import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
-import javafx.application.Platform;
 import java.util.*;
 import java.util.List;
 import java.util.logging.Logger;
 
-import javafx.beans.binding.Bindings;
-import javafx.scene.control.Label;
-import javafx.scene.layout.VBox;
-import javafx.util.Duration;
 import javafx.stage.FileChooser;
 
 import static it.unicam.cs.bdslab.tarnas.view.utils.TOOL.*;
@@ -119,7 +112,6 @@ public class HomeController {
 
         if (this.ioController.getSharedDirectory() != null) {
             label_folder.setText("Folder: " + this.ioController.getSharedDirectory());
-            this.initDockerContainers(this.ioController.getSharedDirectory(), null);
         }
 
         refreshToolListAvailability();
@@ -200,6 +192,11 @@ public class HomeController {
     public void handleAddMoleculesList() {
         logger.info("ADD CSV MOLECULES LIST button clicked");
 
+        if (ioController.getSharedDirectory() == null) {
+            showAlert(Alert.AlertType.WARNING, "No Folder Selected", "", "Complete setup first to initialize Docker containers.");
+            return;
+        }
+
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Select CSV molecules list");
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV files", "*.csv"));
@@ -218,189 +215,39 @@ public class HomeController {
         try {
             Path csvPath = selectedCsv.toPath();
             Path sharedDirectory = csvPath.getParent();
+
+            if (!sharedDirectory.equals(ioController.getSharedDirectory())) {
+                showAlert(Alert.AlertType.WARNING, "Wrong CSV Folder", "",
+                        "Select a CSV inside the configured shared folder: " + ioController.getSharedDirectory());
+                return;
+            }
+
             label_folder.setText("Folder: " + sharedDirectory);
-            this.ioController.loadDirectory(sharedDirectory);
-            this.initDockerContainers(sharedDirectory, csvPath);
+            Task<List<StructureInfo>> preprocessTask = new Task<>() {
+                @Override
+                protected List<StructureInfo> call() throws Exception {
+                    return dockerController.preprocessCsvAndCollectStructures(sharedDirectory, csvPath);
+                }
+            };
+
+            preprocessTask.setOnSucceeded(ev -> {
+                List<StructureInfo> generatedStructures = preprocessTask.getValue();
+                structures.setAll(generatedStructures);
+                logger.info("Loaded " + generatedStructures.size() + " molecules from preprocessed output");
+            });
+
+            preprocessTask.setOnFailed(ev ->
+                    showAlert(Alert.AlertType.ERROR, "CSV preprocessing error", "",
+                            Optional.ofNullable(preprocessTask.getException())
+                                    .map(Throwable::getMessage)
+                                    .orElse("Unknown preprocessing error")));
+
+            new Thread(preprocessTask, "csv-preprocess").start();
         } catch (Exception e) {
             showAlert(Alert.AlertType.ERROR, "CSV load error", "", e.getMessage());
         }
 
         logger.info("Exit add molecules list");
-    }
-
-    private void initDockerContainers(Path sharedFolder, Path csvPathToProcess) {
-        refreshToolListAvailability();
-
-        // Dialog with a Close button (we'll enable it at 100%)
-        Alert loadingAlert = new Alert(Alert.AlertType.INFORMATION);
-        loadingAlert.setTitle("Docker");
-        loadingAlert.setHeaderText(null);
-        loadingAlert.getDialogPane().getButtonTypes().setAll(ButtonType.CLOSE);
-        Button closeBtn = (Button) loadingAlert.getDialogPane().lookupButton(ButtonType.CLOSE);
-        closeBtn.setDisable(true); // locked until 100%
-
-        Label title = new Label("Building Docker images…");
-        ProgressBar bar = new ProgressBar(0);
-        bar.setPrefWidth(380);
-        Label percent = new Label("0%");
-        VBox box = new VBox(10, title, bar, percent);
-        loadingAlert.getDialogPane().setContent(box);
-        loadingAlert.getDialogPane().setPrefWidth(460);
-
-        // prevent closing before done
-        final BooleanProperty done = new SimpleBooleanProperty(false);
-        loadingAlert.setOnCloseRequest(ev -> {
-            if (!done.get())
-                ev.consume();
-        });
-
-        loadingAlert.show();
-
-        // progress driver with a gentle ticker
-        DoubleProperty driver = new SimpleDoubleProperty(0.0);
-        bar.progressProperty().bind(driver);
-        percent.textProperty().bind(Bindings.createStringBinding(
-                () -> Math.min(100, (int) Math.round(driver.get() * 100)) + "%",
-                driver));
-
-        Timeline ticker = new Timeline(
-                new KeyFrame(Duration.millis(120), e -> {
-                    double target = (double) box.getProperties().getOrDefault("targetProgress", 0.0);
-                    double cur = driver.get();
-                    // ease toward the target
-                    double next = cur + Math.min(0.02, Math.max(0.005, (target - cur) * 0.20));
-                    driver.set(Math.min(next, target));
-                }));
-        ticker.setCycleCount(Animation.INDEFINITE);
-        ticker.play();
-
-        Runnable to50 = () -> box.getProperties().put("targetProgress", 0.50);
-        Runnable to95 = () -> box.getProperties().put("targetProgress", 0.95);
-        Runnable to100 = () -> box.getProperties().put("targetProgress", 1.00);
-
-        // --- TASKS ---
-        Task<Integer> taskBuild = new Task<>() {
-            @Override
-            protected Integer call() throws Exception {
-                return dockerController.buildDockerContainerBy(
-                        new File(dockerfileAllToolsPath),
-                        dockerAllToolsImage, dockerAllToolsImageTag,
-                        dockerAllToolsContainer, sharedFolder);
-            }
-        };
-
-        Task<Integer> taskBuildx = new Task<>() {
-            @Override
-            protected Integer call() throws Exception {
-                return dockerController.buildxDockerContainerBy(
-                        new File(dockerfileX3DNAPath),
-                        dockerX3DNAImage, dockerX3DNAImageTag,
-                        dockerX3DNAContainer);
-            }
-        };
-
-        // sequencing + progress
-        taskBuild.setOnRunning(e -> {
-            title.setText("Building Docker images… (step 1/2)");
-            to50.run();
-        });
-
-        taskBuild.setOnSucceeded(e -> {
-            Integer r1 = taskBuild.getValue();
-            if (r1 != null && r1 == 1) {
-                if (csvPathToProcess != null) {
-                    Task<List<StructureInfo>> preprocessTask = new Task<>() {
-                        @Override
-                        protected List<StructureInfo> call() throws Exception {
-                            return dockerController.preprocessCsvAndCollectStructures(sharedFolder, csvPathToProcess);
-                        }
-                    };
-
-                    preprocessTask.setOnSucceeded(ev -> {
-                        List<StructureInfo> generatedStructures = preprocessTask.getValue();
-                        structures.setAll(generatedStructures);
-                        logger.info("Loaded " + generatedStructures.size() + " molecules from preprocessed output");
-                    });
-
-                    preprocessTask.setOnFailed(ev -> Platform.runLater(() ->
-                            showAlert(Alert.AlertType.ERROR, "CSV preprocessing error", "",
-                                    Optional.ofNullable(preprocessTask.getException())
-                                            .map(Throwable::getMessage)
-                                            .orElse("Unknown preprocessing error"))));
-
-                    new Thread(preprocessTask, "csv-preprocess").start();
-                }
-
-                if (x3dnaAvailable) {
-                    title.setText("Building Docker images… (step 2/2)");
-                    to95.run();
-                    new Thread(taskBuildx, "docker-buildx").start();
-                } else {
-                    to100.run();
-                    Timeline finish = new Timeline(
-                            new KeyFrame(Duration.millis(1200), ae -> {
-                                driver.set(1.0);
-                                done.set(true);
-                                closeBtn.setDisable(false);
-                                title.setText("Docker ready (X3DNA unavailable).\nAdd dssr-basic-linux-v2.8.1.zip to docker/x3dna-tool to enable it.");
-                            }),
-                            new KeyFrame(Duration.millis(2400), ae -> {
-                                ticker.stop();
-                                loadingAlert.close();
-                            }));
-                    finish.play();
-                }
-            } else {
-                ticker.stop();
-                title.setText("Build step 1 failed. Check logs.");
-                closeBtn.setDisable(false);
-            }
-        });
-
-        taskBuild.setOnFailed(e -> {
-            ticker.stop();
-            title.setText("Build step 1 failed. Check logs.");
-            closeBtn.setDisable(false);
-        });
-
-        taskBuildx.setOnSucceeded(e -> {
-            Integer r2 = taskBuildx.getValue();
-            Integer r1 = taskBuild.getValue();
-            if (r1 != null && r1 == 1 && r2 != null && r2 == 1) {
-                // both succeeded → animate to 100, enable closing, auto-close after a moment
-                to100.run();
-                Timeline finish = new Timeline(
-                        new KeyFrame(Duration.millis(2550), ae -> {
-                            driver.set(1.0);
-                            done.set(true);
-                            closeBtn.setDisable(false);
-                            title.setText("Docker images ready.");
-                        }),
-                        new KeyFrame(Duration.millis(5100), ae -> {
-                            ticker.stop();
-                            loadingAlert.close();
-                        }));
-                finish.play();
-            } else {
-                ticker.stop();
-                title.setText("Build step 2 failed or returned 0. Check logs.");
-                closeBtn.setDisable(false);
-            }
-        });
-
-        taskBuildx.setOnRunning(e -> {
-            // ensure the second phase visibly advances beyond 50%
-            to95.run();
-        });
-
-        taskBuildx.setOnFailed(e -> {
-            ticker.stop();
-            title.setText("Build step 2 failed. Check logs.");
-            closeBtn.setDisable(false);
-        });
-
-        // kick off
-        new Thread(taskBuild, "docker-build").start();
     }
 
     @FXML

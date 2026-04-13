@@ -1,11 +1,16 @@
 package it.unicam.cs.bdslab.tarnas.view;
 
 import it.unicam.cs.bdslab.tarnas.Main;
+import it.unicam.cs.bdslab.tarnas.controller.DockerController;
 import it.unicam.cs.bdslab.tarnas.controller.IOController;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TextArea;
+import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 
@@ -23,6 +28,7 @@ public class SetupController {
     private TextArea sharedDirectoryTextArea;
 
     private final IOController ioController = IOController.getInstance();
+    private final DockerController dockerController = DockerController.getInstance();
 
     @FXML
     public void initialize() {
@@ -70,10 +76,95 @@ public class SetupController {
         try {
             ioController.loadDirectory(sharedDirectory);
             logger.info("Shared folder set to: " + sharedDirectory);
-            Main.instance.openHome();
+            initializeContainersAndOpenHome(sharedDirectory);
         } catch (IOException e) {
             showAlert(Alert.AlertType.ERROR, "Setup error", e.getMessage());
         }
+    }
+
+    private void initializeContainersAndOpenHome(Path sharedDirectory) {
+        Alert loadingAlert = new Alert(Alert.AlertType.INFORMATION);
+        loadingAlert.initOwner(getStage());
+        loadingAlert.setTitle("Docker setup");
+        loadingAlert.setHeaderText(null);
+        loadingAlert.getDialogPane().getButtonTypes().clear();
+
+        Label title = new Label("Initializing Docker containers…");
+        ProgressBar bar = new ProgressBar();
+        bar.setPrefWidth(380);
+        bar.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
+        loadingAlert.getDialogPane().setContent(new VBox(10, title, bar));
+
+        Task<Integer> taskBuild = new Task<>() {
+            @Override
+            protected Integer call() throws Exception {
+                return dockerController.buildDockerContainerBy(
+                        new File(HomeController.dockerfileAllToolsPath),
+                        HomeController.dockerAllToolsImage,
+                        HomeController.dockerAllToolsImageTag,
+                        HomeController.dockerAllToolsContainer,
+                        sharedDirectory);
+            }
+        };
+
+        Task<Integer> taskBuildx = new Task<>() {
+            @Override
+            protected Integer call() throws Exception {
+                return dockerController.buildxDockerContainerBy(
+                        new File(HomeController.dockerfileX3DNAPath),
+                        HomeController.dockerX3DNAImage,
+                        HomeController.dockerX3DNAImageTag,
+                        HomeController.dockerX3DNAContainer);
+            }
+        };
+
+        taskBuild.setOnRunning(e -> title.setText("Initializing Docker containers… (step 1/2)"));
+
+        taskBuild.setOnSucceeded(e -> {
+            Integer r1 = taskBuild.getValue();
+            if (r1 == null || r1 != 1) {
+                loadingAlert.close();
+                showAlert(Alert.AlertType.ERROR, "Setup error", "Failed to initialize all-tools container.");
+                return;
+            }
+
+            boolean x3dnaAvailable = dockerController.dockerImageExists(HomeController.dockerX3DNAImage)
+                    || dockerController.isX3DNABuildContextAvailable(new File(HomeController.dockerfileX3DNAPath));
+
+            if (!x3dnaAvailable) {
+                loadingAlert.close();
+                Main.instance.openHome();
+                return;
+            }
+
+            title.setText("Initializing Docker containers… (step 2/2)");
+            new Thread(taskBuildx, "setup-docker-buildx").start();
+        });
+
+        taskBuild.setOnFailed(e -> {
+            loadingAlert.close();
+            String msg = taskBuild.getException() == null ? "Unknown error" : taskBuild.getException().getMessage();
+            showAlert(Alert.AlertType.ERROR, "Setup error", msg);
+        });
+
+        taskBuildx.setOnSucceeded(e -> {
+            Integer r2 = taskBuildx.getValue();
+            loadingAlert.close();
+            if (r2 != null && r2 == 1) {
+                Main.instance.openHome();
+            } else {
+                showAlert(Alert.AlertType.ERROR, "Setup error", "Failed to initialize X3DNA container.");
+            }
+        });
+
+        taskBuildx.setOnFailed(e -> {
+            loadingAlert.close();
+            String msg = taskBuildx.getException() == null ? "Unknown error" : taskBuildx.getException().getMessage();
+            showAlert(Alert.AlertType.ERROR, "Setup error", msg);
+        });
+
+        new Thread(taskBuild, "setup-docker-build").start();
+        loadingAlert.showAndWait();
     }
 
     private Stage getStage() {
