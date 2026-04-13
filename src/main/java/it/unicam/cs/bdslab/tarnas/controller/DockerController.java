@@ -1,7 +1,6 @@
 package it.unicam.cs.bdslab.tarnas.controller;
 
 import com.github.dockerjava.api.DockerClient;
-import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.BuildImageResultCallback;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.ExecCreateCmdResponse;
@@ -231,14 +230,24 @@ public class DockerController {
         String imageId = reader.readLine();
         checkImage.waitFor();
 
+        if ((imageId == null || imageId.isEmpty()) && !isX3DNABuildContextAvailable(dockerFile)) {
+            logger.severe("Skipping X3DNA setup: required archive dssr-basic-linux-v2.8.1.zip is missing in "
+                    + contextDir.getAbsolutePath());
+            return 0;
+        }
+
         if (imageId == null || imageId.isEmpty()) {
             logger.info("Building " + imageName + " image...");
             // Create buildx builder
-            new ProcessBuilder("docker", "buildx", "create", "--use")
+            int buildxCreateExitCode = new ProcessBuilder("docker", "buildx", "create", "--use")
                     .inheritIO().start().waitFor();
+            if (buildxCreateExitCode != 0) {
+                logger.severe("Failed to create buildx builder for " + imageName + ". Exit code: " + buildxCreateExitCode);
+                return 0;
+            }
 
             // Build image
-            new ProcessBuilder(
+            int buildExitCode = new ProcessBuilder(
                     "docker", "buildx", "build",
                     "--platform", "linux/amd64",
                     "-f", dockerFile.getAbsolutePath(),
@@ -246,6 +255,10 @@ public class DockerController {
                     "--load",
                     contextDir.getAbsolutePath()
             ).inheritIO().start().waitFor();
+            if (buildExitCode != 0) {
+                logger.severe("Failed to build image " + imageName + ". Exit code: " + buildExitCode);
+                return 0;
+            }
             logger.info("Image built: " + imageName);
         } else {
             logger.info("Image " + imageName + " already exists. Skipping build.");
@@ -261,12 +274,16 @@ public class DockerController {
         checkContainer.waitFor();
 
         if (existingContainerId != null && !existingContainerId.isEmpty()) {
-            new ProcessBuilder("docker", "rm", "-f", containerName)
+            int removeExitCode = new ProcessBuilder("docker", "rm", "-f", containerName)
                     .inheritIO().start().waitFor();
+            if (removeExitCode != 0) {
+                logger.severe("Failed removing existing container " + containerName + ". Exit code: " + removeExitCode);
+                return 0;
+            }
         }
 
         // Run container with shared volume
-        new ProcessBuilder(
+        int runExitCode = new ProcessBuilder(
                 "docker", "run",
                 "--platform", "linux/amd64",
                 "--name", containerName,
@@ -275,12 +292,45 @@ public class DockerController {
                 imageName,
                 "bash"
         ).inheritIO().start().waitFor();
+        if (runExitCode != 0) {
+            logger.severe("Failed running container " + containerName + ". Exit code: " + runExitCode);
+            return 0;
+        }
 
         logger.info("Container started with shared folder: " + containerName);
 
-        makeDirInContainer(this.resolveContainerId(containerName), "/data/preprocessed");
+        String resolvedContainerId = this.resolveContainerId(containerName);
+        if (resolvedContainerId == null) {
+            logger.severe("Cannot resolve container ID for " + containerName + " after start.");
+            return 0;
+        }
+        makeDirInContainer(resolvedContainerId, "/data/preprocessed");
 
         return 1;
+    }
+
+    public boolean dockerImageExists(String imageName) {
+        try {
+            Process checkImage = new ProcessBuilder("docker", "images", "-q", imageName)
+                    .redirectErrorStream(true)
+                    .start();
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(checkImage.getInputStream()));
+            String imageId = reader.readLine();
+            checkImage.waitFor();
+            return imageId != null && !imageId.isEmpty();
+        } catch (Exception e) {
+            logger.severe("Failed checking image " + imageName + ": " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean isX3DNABuildContextAvailable(File dockerFile) {
+        if (dockerFile == null) return false;
+        File contextDir = dockerFile.getParentFile();
+        if (contextDir == null) return false;
+        File requiredArchive = new File(contextDir, "dssr-basic-linux-v2.8.1.zip");
+        return requiredArchive.isFile();
     }
 
     /**
@@ -585,7 +635,6 @@ public class DockerController {
         if (instance == null) instance = new DockerController();
         return instance;
     }
-
 
     private void filterPDB(String chain, String pdbID, Path preprocessedFolder, Path src) throws Exception {
         var filteredFiles = chain.equals("*")
