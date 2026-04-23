@@ -245,7 +245,7 @@ public class Main extends Application {
             stage = new Stage();
         }
         stage.setTitle("EXTRARNAS");
-        stage.getIcons().add(new Image(String.valueOf(App.class.getResource("/img/tarnas-icon.png").toURI())));
+        stage.getIcons().add(new Image(String.valueOf(App.class.getResource("/img/EXTRARNAS-logo.png").toURI())));
         stage.setScene(new Scene(root));
         return stage;
     }

@@ -66,9 +66,9 @@
                   </ImageView>
                </left>
                <center>
-                  <ImageView fitHeight="78.0" fitWidth="121.0" pickOnBounds="true" preserveRatio="true" BorderPane.alignment="CENTER">
+                  <ImageView fitHeight="136.0" fitWidth="140.0" pickOnBounds="true" preserveRatio="true" BorderPane.alignment="CENTER">
                      <image>
-                        <Image url="@../img/tarnas-center-logo.png" />
+                        <Image url="@../img/EXTRARNAS.png" />
                      </image>
                      <BorderPane.margin>
                         <Insets left="50.0" />

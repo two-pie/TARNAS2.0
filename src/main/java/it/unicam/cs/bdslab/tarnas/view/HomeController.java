@@ -17,6 +17,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.web.WebEngine;
@@ -121,6 +122,14 @@ public class HomeController {
         toolListView.setCellFactory(CheckBoxListCell
                 .forListView(tool -> checkedItems.computeIfAbsent(tool, t -> new SimpleBooleanProperty(false))));
 
+        // Set to enable or disable the "Run" button based on the selection of tools
+        toolListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
+        toolListView.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
+            boolean anySelected = checkedItems.values().stream().anyMatch(BooleanProperty::get);
+            btn_run.setDisable(!anySelected);
+        });
+
         this.filesTable.setItems(this.structures);
 
         nameColumn.setCellValueFactory(c -> new ReadOnlyStringWrapper(c.getValue().getName()));
@@ -140,11 +149,8 @@ public class HomeController {
                 trashIcon.setPreserveRatio(true);
 
                 btn.setGraphic(trashIcon);
-                btn.setText(null);
-                btn.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
-                btn.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
-                btn.setTooltip(new Tooltip("Delete"));
-
+                btn.setText("Delete");
+                btn.setContentDisplay(ContentDisplay.LEFT);
                 btn.setOnAction(e -> {
                     StructureInfo item = getTableView().getItems().get(getIndex());
                     filesTable.getItems().remove(item);
@@ -178,6 +184,9 @@ public class HomeController {
         select_outputESS.setItems(FXCollections.observableArrayList(
                 RNASecondaryStrucutrePrinter.OutputFormat.getExtendedFormats()));
 
+        select_outputSS.setValue(RNASecondaryStrucutrePrinter.OutputFormat.BPSEQ);
+        select_outputESS.setValue(RNASecondaryStrucutrePrinter.OutputFormat.EXTENDED_BPSEQ);
+
         logger.info("Initialization done");
     }
 
@@ -185,10 +194,11 @@ public class HomeController {
         ckExtractX.setOnAction((actionEvent) -> {
             actionEvent.consume();
             boolean selected = ckExtractX.isSelected();
-            if (selected) {
+            boolean noToolSelected = checkedItems.values().stream().noneMatch(BooleanProperty::get);
+            if (selected && !noToolSelected) {
                 btn_run.setDisable(false);
             } else {
-                if (!ck_extractSS.isSelected() && !ck_extractESS.isSelected()) {
+                if (!ck_extractSS.isSelected() && !ck_extractESS.isSelected() && !ck_consensus.isSelected()) {
                     btn_run.setDisable(true);
                 }
             }

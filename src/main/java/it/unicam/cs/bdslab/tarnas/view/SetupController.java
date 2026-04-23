@@ -3,8 +3,10 @@ package it.unicam.cs.bdslab.tarnas.view;
 import it.unicam.cs.bdslab.tarnas.Main;
 import it.unicam.cs.bdslab.tarnas.controller.DockerController;
 import it.unicam.cs.bdslab.tarnas.controller.IOController;
+import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
@@ -13,6 +15,7 @@ import javafx.scene.control.TextArea;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+import javafx.stage.Modality;
 
 import java.io.File;
 import java.io.IOException;
@@ -83,17 +86,23 @@ public class SetupController {
     }
 
     private void initializeContainersAndOpenHome(Path sharedDirectory) {
-        Alert loadingAlert = new Alert(Alert.AlertType.INFORMATION);
-        loadingAlert.initOwner(getStage());
-        loadingAlert.setTitle("Docker setup");
-        loadingAlert.setHeaderText(null);
-        loadingAlert.getDialogPane().getButtonTypes().clear();
-
+        // Create a custom Stage instead of Alert for better control
+        Stage loadingStage = new Stage();
+        loadingStage.setTitle("Docker setup");
+        loadingStage.initModality(Modality.APPLICATION_MODAL);
+        loadingStage.setResizable(false);
+        
         Label title = new Label("Initializing Docker containers…");
         ProgressBar bar = new ProgressBar();
         bar.setPrefWidth(380);
         bar.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
-        loadingAlert.getDialogPane().setContent(new VBox(10, title, bar));
+        
+        VBox vbox = new VBox(10, title, bar);
+        vbox.setPadding(new javafx.geometry.Insets(20));
+        vbox.setStyle("-fx-alignment: center;");
+        
+        Scene scene = new javafx.scene.Scene(vbox, 400, 120);
+        loadingStage.setScene(scene);
 
         Task<Integer> taskBuild = new Task<>() {
             @Override
@@ -123,8 +132,10 @@ public class SetupController {
         taskBuild.setOnSucceeded(e -> {
             Integer r1 = taskBuild.getValue();
             if (r1 == null || r1 != 1) {
-                loadingAlert.close();
-                showAlert(Alert.AlertType.ERROR, "Setup error", "Failed to initialize all-tools container.");
+                Platform.runLater(() -> {
+                    loadingStage.close();
+                    showAlert(Alert.AlertType.ERROR, "Setup error", "Failed to initialize all-tools container.");
+                });
                 return;
             }
 
@@ -132,39 +143,47 @@ public class SetupController {
                     || dockerController.isX3DNABuildContextAvailable(new File(HomeController.dockerfileX3DNAPath));
 
             if (!x3dnaAvailable) {
-                loadingAlert.close();
-                Main.instance.openHome();
+                Platform.runLater(() -> {
+                    loadingStage.close();
+                    Main.instance.openHome();
+                });
                 return;
             }
 
-            title.setText("Initializing Docker containers… (step 2/2)");
+            Platform.runLater(() -> title.setText("Initializing Docker containers… (step 2/2)"));
             new Thread(taskBuildx, "setup-docker-buildx").start();
         });
 
         taskBuild.setOnFailed(e -> {
-            loadingAlert.close();
-            String msg = taskBuild.getException() == null ? "Unknown error" : taskBuild.getException().getMessage();
-            showAlert(Alert.AlertType.ERROR, "Setup error", msg);
+            Platform.runLater(() -> {
+                loadingStage.close();
+                String msg = taskBuild.getException() == null ? "Unknown error" : taskBuild.getException().getMessage();
+                showAlert(Alert.AlertType.ERROR, "Setup error", msg);
+            });
         });
 
         taskBuildx.setOnSucceeded(e -> {
             Integer r2 = taskBuildx.getValue();
-            loadingAlert.close();
-            if (r2 != null && r2 == 1) {
-                Main.instance.openHome();
-            } else {
-                showAlert(Alert.AlertType.ERROR, "Setup error", "Failed to initialize X3DNA container.");
-            }
+            Platform.runLater(() -> {
+                loadingStage.close();
+                if (r2 != null && r2 == 1) {
+                    Main.instance.openHome();
+                } else {
+                    showAlert(Alert.AlertType.ERROR, "Setup error", "Failed to initialize X3DNA container.");
+                }
+            });
         });
 
         taskBuildx.setOnFailed(e -> {
-            loadingAlert.close();
-            String msg = taskBuildx.getException() == null ? "Unknown error" : taskBuildx.getException().getMessage();
-            showAlert(Alert.AlertType.ERROR, "Setup error", msg);
+            Platform.runLater(() -> {
+                loadingStage.close();
+                String msg = taskBuildx.getException() == null ? "Unknown error" : taskBuildx.getException().getMessage();
+                showAlert(Alert.AlertType.ERROR, "Setup error", msg);
+            });
         });
 
+        loadingStage.show();
         new Thread(taskBuild, "setup-docker-build").start();
-        loadingAlert.showAndWait();
     }
 
     private Stage getStage() {

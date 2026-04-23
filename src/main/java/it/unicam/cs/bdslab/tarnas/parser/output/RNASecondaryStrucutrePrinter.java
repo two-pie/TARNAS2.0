@@ -9,7 +9,7 @@ import java.util.Set;
 
 public class RNASecondaryStrucutrePrinter {
 
-    private static String HEADER = "Index\tNucleotide\t" 
+    private static final String HEADER = "Index\tNucleotide\t"
         + String.join("\t", BondType.getLeontisWesthofFamily().stream()
             .map(BondType::getInfo)
             .toList()

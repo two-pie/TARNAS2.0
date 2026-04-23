@@ -1,6 +1,7 @@
 package it.unicam.cs.bdslab.tarnas.parser.models;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -124,7 +125,7 @@ public enum BondType {
                 && bt != BondType.NON_CANONICAL
                 && bt != BondType.STACKING
             )
-            .sorted((bt1, bt2) -> bt1.ordinal() - bt2.ordinal())
+            .sorted(Comparator.comparingInt(Enum::ordinal))
             .toList();
     }
 }
