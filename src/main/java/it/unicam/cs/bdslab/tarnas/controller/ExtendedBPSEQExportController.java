@@ -69,14 +69,14 @@ public class ExtendedBPSEQExportController {
         for (ExportItem item : structures) {
             ensureSequence(item.structure());
             if (secondaryStrcutureFormat != null) {
-                String content = printer.printExtendedBPSEQ(item.structure());
-                String fileName = sanitize(item.baseName()) + item.suffix() + "_" + tool.getName() + ".bpseq";
+                String content = printer.printBPSEQ(item.structure());
+                String fileName = sanitize(item.baseName()) + item.suffix() + "_" + tool.getName() + ".bpseq.txt";
                 Path outputFile = outputDir.resolve(fileName);
                 Files.writeString(outputFile, content, StandardCharsets.UTF_8);
             }
             if (extendendStructureFormat != null) {
-                String content = printer.printBPSEQ(item.structure());
-                String fileName = sanitize(item.baseName()) + item.suffix() + "_" + tool.getName() + ".bpseqe";
+                String content = printer.printExtendedBPSEQ(item.structure());
+                String fileName = sanitize(item.baseName()) + item.suffix() + "_" + tool.getName() + ".bpseqe.txt";
                 Path outputFile = outputDir.resolve(fileName);
                 Files.writeString(outputFile, content, StandardCharsets.UTF_8);
             }
