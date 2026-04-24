@@ -5,12 +5,12 @@ import it.unicam.cs.bdslab.tarnas.parser.models.ExtendedRNASecondaryStructure;
 import it.unicam.cs.bdslab.tarnas.parser.models.Pair;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 public class RNASecondaryStrcuturePrinterTest {
 

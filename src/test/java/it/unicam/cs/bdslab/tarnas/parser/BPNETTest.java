@@ -1,8 +1,6 @@
 package it.unicam.cs.bdslab.tarnas.parser;
 
-import it.unicam.cs.bdslab.tarnas.parser.listeners.bpnet.BPNETLexer;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.bpnet.BPNETParser;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.bpnet.BPNETParserCustomListener;
+import it.unicam.cs.bdslab.tarnas.parser.listeners.bpnet.*;
 import it.unicam.cs.bdslab.tarnas.parser.models.ExtendedRNASecondaryStructure;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -13,7 +11,8 @@ import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.io.FileReader;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Test class for BPNET/BPFIND parser.
@@ -24,15 +23,15 @@ public class BPNETTest {
     public void testBPNETParsing() throws Exception {
         File inputFile = new File(this.getClass().getResource("/BPNET_1YMO_A.1YMO_A.out").toURI());
         CharStream charStream = CharStreams.fromReader(new FileReader(inputFile));
-        BPNETLexer lexer = new BPNETLexer(charStream);
+        BpnetGrammarLexer lexer = new BpnetGrammarLexer(charStream);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
-        BPNETParser parser = new BPNETParser(tokens);
+        BpnetGrammarParser parser = new BpnetGrammarParser(tokens);
         
-        BPNETParserCustomListener listener = new BPNETParserCustomListener();
+        BpnetParserCustomListener listener = new BpnetParserCustomListener();
         ParseTreeWalker walker = new ParseTreeWalker();
         walker.walk(listener, parser.bpnetFile());
         
-        ExtendedRNASecondaryStructure structure = listener.getResult();
+        ExtendedRNASecondaryStructure structure = listener.getStructure();
         
         // Verify we got some pairs
         assertNotNull(structure);
