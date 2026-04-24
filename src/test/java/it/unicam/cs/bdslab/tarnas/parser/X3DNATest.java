@@ -1,11 +1,8 @@
 package it.unicam.cs.bdslab.tarnas.parser;
 
-import com.fasterxml.jackson.jaxrs.json.annotation.JSONP;
+import it.unicam.cs.bdslab.tarnas.parser.listeners.JSON.JSONLexer;
 import it.unicam.cs.bdslab.tarnas.parser.listeners.JSON.JSONParser;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.fr3d.JSONLexer;
 import it.unicam.cs.bdslab.tarnas.parser.listeners.x3dna.JSONX3dnaListener;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.x3dna.X3DNALexer;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.x3dna.X3DNAParser;
 import it.unicam.cs.bdslab.tarnas.parser.models.ExtendedRNASecondaryStructure;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;

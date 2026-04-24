@@ -1,9 +1,7 @@
 package it.unicam.cs.bdslab.tarnas.parser;
 
 import it.unicam.cs.bdslab.tarnas.parser.listeners.JSON.JSONParser;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.fr3d.Fr3dLexer;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.fr3d.Fr3dParser;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.fr3d.JSONLexer;
+import it.unicam.cs.bdslab.tarnas.parser.listeners.JSON.JSONLexer;
 import it.unicam.cs.bdslab.tarnas.parser.listeners.fred.JSONFr3dListener;
 import it.unicam.cs.bdslab.tarnas.parser.models.ExtendedRNASecondaryStructure;
 import org.antlr.v4.runtime.CharStream;

@@ -2,8 +2,6 @@ package it.unicam.cs.bdslab.tarnas.parser.listeners.x3dna;
 
 import it.unicam.cs.bdslab.tarnas.parser.listeners.JSON.JSONBaseListener;
 import it.unicam.cs.bdslab.tarnas.parser.listeners.JSON.JSONParser;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.x3dna.X3DNAParser;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.x3dna.X3DNAParserBaseListener;
 import it.unicam.cs.bdslab.tarnas.parser.models.BondType;
 import it.unicam.cs.bdslab.tarnas.parser.models.ExtendedRNASecondaryStructure;
 import it.unicam.cs.bdslab.tarnas.parser.models.Pair;

@@ -1,26 +1,14 @@
 package it.unicam.cs.bdslab.tarnas.controller;
 
-import it.unicam.cs.bdslab.tarnas.parser.listeners.barnaba.BarnabaCustomListener;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.barnaba.BarnabaLexer;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.barnaba.BarnabaParser;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.bpnet.BPNETLexer;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.bpnet.BPNETParser;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.bpnet.BpnetParserCustomListener;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.fr3d.Fr3dLexer;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.fr3d.Fr3dParser;
+import it.unicam.cs.bdslab.tarnas.parser.listeners.JSON.JSONLexer;
+import it.unicam.cs.bdslab.tarnas.parser.listeners.JSON.JSONParser;
+import it.unicam.cs.bdslab.tarnas.parser.listeners.barnaba.*;
+import it.unicam.cs.bdslab.tarnas.parser.listeners.bpnet.*;
 import it.unicam.cs.bdslab.tarnas.parser.listeners.fred.JSONFr3dListener;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.mcannotate.MCAnnotateLexer;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.mcannotate.MCAnnotateParser;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.mcannotate.McAnnotateCustomListener;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.rnapolis.RNApolisCustomListener;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.rnapolis.RNApolisLexer;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.rnapolis.RNApolisParser;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.rnaview.RNAviewCustomListener;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.rnaview.RNAviewLexer;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.rnaview.RNAviewParser;
+import it.unicam.cs.bdslab.tarnas.parser.listeners.mcannotate.*;
+import it.unicam.cs.bdslab.tarnas.parser.listeners.rnapolis.*;
+import it.unicam.cs.bdslab.tarnas.parser.listeners.rnaview.*;
 import it.unicam.cs.bdslab.tarnas.parser.listeners.x3dna.JSONX3dnaListener;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.x3dna.X3DNALexer;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.x3dna.X3DNAParser;
 import it.unicam.cs.bdslab.tarnas.parser.models.ExtendedRNASecondaryStructure;
 import it.unicam.cs.bdslab.tarnas.parser.output.RNASecondaryStrucutrePrinter;
 import it.unicam.cs.bdslab.tarnas.view.utils.TOOL;
@@ -105,8 +93,8 @@ public class ExtendedBPSEQExportController {
     private List<ExportItem> parseRNAView(Path folder) throws IOException {
         List<ExportItem> result = new ArrayList<>();
         for (Path file : listFiles(folder, "pdb.out")) {
-            var lexer = new RNAviewLexer(CharStreams.fromPath(file));
-            var parser = new RNAviewParser(new CommonTokenStream(lexer));
+            var lexer = new RNAviewGrammarLexer(CharStreams.fromPath(file));
+            var parser = new RNAviewGrammarParser(new CommonTokenStream(lexer));
             var listener = new RNAviewCustomListener();
             ParseTreeWalker.DEFAULT.walk(listener, parser.rnaviewFile());
             result.add(new ExportItem(baseNameFor(TOOL.RNAVIEW, file), "", listener.getStructure()));
@@ -117,8 +105,8 @@ public class ExtendedBPSEQExportController {
     private List<ExportItem> parseRNApolis(Path folder) throws IOException {
         List<ExportItem> result = new ArrayList<>();
         for (Path file : listFiles(folder, ".3db")) {
-            var lexer = new RNApolisLexer(CharStreams.fromPath(file));
-            var parser = new RNApolisParser(new CommonTokenStream(lexer));
+            var lexer = new RNApolisGrammarLexer(CharStreams.fromPath(file));
+            var parser = new RNApolisGrammarParser(new CommonTokenStream(lexer));
             var listener = new RNApolisCustomListener();
             ParseTreeWalker.DEFAULT.walk(listener, parser.rnapolisFile());
             List<ExtendedRNASecondaryStructure> structures = listener.getStructures();
@@ -133,8 +121,8 @@ public class ExtendedBPSEQExportController {
     private List<ExportItem> parseBarnaba(Path folder) throws IOException {
         List<ExportItem> result = new ArrayList<>();
         for (Path file : listFiles(folder, ".ANNOTATE.pairing.out")) {
-            var lexer = new BarnabaLexer(CharStreams.fromPath(file));
-            var parser = new BarnabaParser(new CommonTokenStream(lexer));
+            var lexer = new BarnabaGrammarLexer(CharStreams.fromPath(file));
+            var parser = new BarnabaGrammarParser(new CommonTokenStream(lexer));
             var listener = new BarnabaCustomListener();
             ParseTreeWalker.DEFAULT.walk(listener, parser.barnabaFile());
             result.add(new ExportItem(baseNameFor(TOOL.BARNABA, file), "", listener.getStructure()));
@@ -145,8 +133,8 @@ public class ExtendedBPSEQExportController {
     private List<ExportItem> parseBPNET(Path folder) throws IOException {
         List<ExportItem> result = new ArrayList<>();
         for (Path file : listFiles(folder, ".out")) {
-            var lexer = new BPNETLexer(CharStreams.fromPath(file));
-            var parser = new BPNETParser(new CommonTokenStream(lexer));
+            var lexer = new BpnetGrammarLexer(CharStreams.fromPath(file));
+            var parser = new BpnetGrammarParser(new CommonTokenStream(lexer));
             var listener = new BpnetParserCustomListener();
             ParseTreeWalker.DEFAULT.walk(listener, parser.bpnetFile());
             result.add(new ExportItem(baseNameFor(TOOL.BPNET, file), "", listener.getStructure()));
@@ -157,10 +145,10 @@ public class ExtendedBPSEQExportController {
     private List<ExportItem> parseFR3D(Path folder) throws IOException {
         List<ExportItem> result = new ArrayList<>();
         for (Path file : listFiles(folder, ".json")) {
-            var lexer = new Fr3dLexer(CharStreams.fromPath(file));
-            var parser = new Fr3dParser(new CommonTokenStream(lexer));
+            var lexer = new JSONLexer(CharStreams.fromPath(file));
+            var parser = new JSONParser(new CommonTokenStream(lexer));
             var listener = new JSONFr3dListener();
-            ParseTreeWalker.DEFAULT.walk(listener, parser.fr3dFile());
+            ParseTreeWalker.DEFAULT.walk(listener, parser.json());
             result.add(new ExportItem(baseNameFor(TOOL.FR3D, file), "", listener.getStructure()));
         }
         return result;
@@ -169,10 +157,10 @@ public class ExtendedBPSEQExportController {
     private List<ExportItem> parseX3DNA(Path folder) throws IOException {
         List<ExportItem> result = new ArrayList<>();
         for (Path file : listFiles(folder, ".json")) {
-            var lexer = new X3DNALexer(CharStreams.fromPath(file));
-            var parser = new X3DNAParser(new CommonTokenStream(lexer));
+            var lexer = new JSONLexer(CharStreams.fromPath(file));
+            var parser = new JSONParser(new CommonTokenStream(lexer));
             var listener = new JSONX3dnaListener();
-            ParseTreeWalker.DEFAULT.walk(listener, parser.x3dnaFile());
+            ParseTreeWalker.DEFAULT.walk(listener, parser.json());
             result.add(new ExportItem(baseNameFor(TOOL.X3DNA, file), "", listener.getStructure()));
         }
         return result;
@@ -181,10 +169,10 @@ public class ExtendedBPSEQExportController {
     private List<ExportItem> parseMCAnnotate(Path folder) throws IOException {
         List<ExportItem> result = new ArrayList<>();
         for (Path file : listFiles(folder, ".txt")) {
-            var lexer = new MCAnnotateLexer(CharStreams.fromPath(file));
-            var parser = new MCAnnotateParser(new CommonTokenStream(lexer));
+            var lexer = new McAnnotateGrammarLexer(CharStreams.fromPath(file));
+            var parser = new McAnnotateGrammarParser(new CommonTokenStream(lexer));
             var listener = new McAnnotateCustomListener();
-            ParseTreeWalker.DEFAULT.walk(listener, parser.mcAannotateFile());
+            ParseTreeWalker.DEFAULT.walk(listener, parser.mcAnnotateFile());
             result.add(new ExportItem(baseNameFor(TOOL.MC_ANNOTATE, file), "", listener.getStructure()));
         }
         return result;

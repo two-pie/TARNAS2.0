@@ -1,7 +1,5 @@
 package it.unicam.cs.bdslab.tarnas.parser.listeners.bpnet;
 
-import it.unicam.cs.bdslab.tarnas.parser.listeners.bpnet.BPNETParser;
-import it.unicam.cs.bdslab.tarnas.parser.listeners.bpnet.BPNETParserBaseListener;
 import it.unicam.cs.bdslab.tarnas.parser.models.BondType;
 import it.unicam.cs.bdslab.tarnas.parser.models.ExtendedRNASecondaryStructure;
 import it.unicam.cs.bdslab.tarnas.parser.models.Pair;
