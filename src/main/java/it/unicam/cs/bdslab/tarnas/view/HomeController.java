@@ -33,7 +33,9 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import javafx.stage.FileChooser;
 
@@ -357,6 +359,15 @@ public class HomeController {
                 updateProgress(0, selectedTools.size());
                 int total = selectedTools.size();
                 int count = 0;
+                Map<String, String> supportSequences = Map.of();
+
+                if (selectedTools.stream().anyMatch(Predicate.not(TOOL::giveStructure))) {
+                    actionsMap.get(RNAPOLIS_ANNOTATOR).run();
+                    supportSequences = extendedBPSEQExportController.loadStructures(TOOL.RNAPOLIS_ANNOTATOR, ioController.getSharedDirectory())
+                            .stream()
+                            .map(e -> Map.entry(e.baseName(), e.structure().getSequence()))
+                            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                }
 
                 for (TOOL tool : selectedTools) {
 
@@ -375,7 +386,9 @@ public class HomeController {
                                     : null,
                             ck_extractESS.isSelected()
                                     ? RNASecondaryStrucutrePrinter.OutputFormat.EXTENDED_BPSEQ
-                                    : null);
+                                    : null,
+                            supportSequences
+                            );
 
                     count++;
                     updateProgress(count, total);
