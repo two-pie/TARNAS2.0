@@ -4,6 +4,7 @@ import it.unicam.cs.bdslab.tarnas.controller.DockerController;
 import it.unicam.cs.bdslab.tarnas.controller.ExtendedBPSEQExportController;
 import it.unicam.cs.bdslab.tarnas.controller.IOController;
 import it.unicam.cs.bdslab.tarnas.models.StructureInfo;
+import it.unicam.cs.bdslab.tarnas.models.StructureStatus;
 import it.unicam.cs.bdslab.tarnas.parser.output.RNASecondaryStrucutrePrinter;
 import it.unicam.cs.bdslab.tarnas.view.utils.TOOL;
 import javafx.beans.property.*;
@@ -369,8 +370,11 @@ public class HomeController {
                     extendedBPSEQExportController.exportForTool(
                             tool,
                             ioController.getSharedDirectory(),
-                            ck_extractSS.isSelected() ? RNASecondaryStrucutrePrinter.OutputFormat.BPSEQ : null,
-                            ck_extractESS.isSelected() ? RNASecondaryStrucutrePrinter.OutputFormat.EXTENDED_BPSEQ
+                            ck_extractSS.isSelected()
+                                    ? RNASecondaryStrucutrePrinter.OutputFormat.BPSEQ
+                                    : null,
+                            ck_extractESS.isSelected()
+                                    ? RNASecondaryStrucutrePrinter.OutputFormat.EXTENDED_BPSEQ
                                     : null);
 
                     count++;
@@ -389,6 +393,9 @@ public class HomeController {
         title.textProperty().bind(task.messageProperty());
 
         task.setOnSucceeded(e -> {
+            this.filesTable.getItems()
+                            .forEach(s -> s.setStatus(StructureStatus.PROCESSED));
+            this.filesTable.refresh();
             loadingAlert.close();
 
             showAlert(
