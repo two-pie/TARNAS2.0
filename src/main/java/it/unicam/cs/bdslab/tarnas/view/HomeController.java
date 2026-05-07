@@ -119,8 +119,9 @@ public class HomeController {
 
         refreshToolListAvailability();
 
-        toolListView.setCellFactory(CheckBoxListCell
-                .forListView(tool -> checkedItems.computeIfAbsent(tool, t -> new SimpleBooleanProperty(false))));
+        toolListView
+                .setCellFactory(CheckBoxListCell
+                    .forListView(tool -> checkedItems.computeIfAbsent(tool, t -> new SimpleBooleanProperty(false))));
 
         // Set to enable or disable the "Run" button based on the selection of tools
         toolListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
@@ -459,7 +460,7 @@ public class HomeController {
         boolean zipAvailable = dockerController.isX3DNABuildContextAvailable(new File(dockerfileX3DNAPath));
         this.x3dnaAvailable = imageAvailable || zipAvailable;
 
-        ObservableList<TOOL> tools = FXCollections.observableArrayList(TOOL.values());
+        ObservableList<TOOL> tools = FXCollections.observableArrayList(Arrays.stream(values()).filter(TOOL::visible).toList());
         if (!x3dnaAvailable) {
             tools.remove(X3DNA);
             BooleanProperty selected = checkedItems.get(X3DNA);

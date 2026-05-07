@@ -116,18 +116,7 @@ public class SetupController {
             }
         };
 
-        Task<Integer> taskBuildx = new Task<>() {
-            @Override
-            protected Integer call() throws Exception {
-                return dockerController.buildxDockerContainerBy(
-                        new File(HomeController.dockerfileX3DNAPath),
-                        HomeController.dockerX3DNAImage,
-                        HomeController.dockerX3DNAImageTag,
-                        HomeController.dockerX3DNAContainer);
-            }
-        };
-
-        taskBuild.setOnRunning(e -> title.setText("Initializing Docker containers… (step 1/2)"));
+        taskBuild.setOnRunning(e -> title.setText("Initializing Docker containers… (step 1/1)"));
 
         taskBuild.setOnSucceeded(e -> {
             Integer r1 = taskBuild.getValue();
@@ -139,9 +128,7 @@ public class SetupController {
                 return;
             }
 
-            boolean x3dnaAvailable = dockerController.dockerImageExists(HomeController.dockerX3DNAImage)
-                    || dockerController.isX3DNABuildContextAvailable(new File(HomeController.dockerfileX3DNAPath));
-
+            boolean x3dnaAvailable = false;
             if (!x3dnaAvailable) {
                 Platform.runLater(() -> {
                     loadingStage.close();
@@ -151,33 +138,12 @@ public class SetupController {
             }
 
             Platform.runLater(() -> title.setText("Initializing Docker containers… (step 2/2)"));
-            new Thread(taskBuildx, "setup-docker-buildx").start();
         });
 
         taskBuild.setOnFailed(e -> {
             Platform.runLater(() -> {
                 loadingStage.close();
                 String msg = taskBuild.getException() == null ? "Unknown error" : taskBuild.getException().getMessage();
-                showAlert(Alert.AlertType.ERROR, "Setup error", msg);
-            });
-        });
-
-        taskBuildx.setOnSucceeded(e -> {
-            Integer r2 = taskBuildx.getValue();
-            Platform.runLater(() -> {
-                loadingStage.close();
-                if (r2 != null && r2 == 1) {
-                    Main.instance.openHome();
-                } else {
-                    showAlert(Alert.AlertType.ERROR, "Setup error", "Failed to initialize X3DNA container.");
-                }
-            });
-        });
-
-        taskBuildx.setOnFailed(e -> {
-            Platform.runLater(() -> {
-                loadingStage.close();
-                String msg = taskBuildx.getException() == null ? "Unknown error" : taskBuildx.getException().getMessage();
                 showAlert(Alert.AlertType.ERROR, "Setup error", msg);
             });
         });

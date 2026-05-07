@@ -34,4 +34,11 @@ public enum TOOL {
     public String toString() {
         return name.replaceAll("_", " ");
     }
+
+    public boolean visible() {
+        return switch (this) {
+            case RNAVIEW, MC_ANNOTATE, RNAPOLIS_ANNOTATOR -> true;
+            case BARNABA, BPNET, FR3D, X3DNA -> false;
+        };
+    }
 }
