@@ -61,7 +61,7 @@ public class RNASecondaryStrucutrePrinter {
 
     public enum OutputFormat {
         EXTENDED_BPSEQ,
-        DBN,
+       // DBN,
         BPSEQ;
 
         @Override
@@ -69,7 +69,7 @@ public class RNASecondaryStrucutrePrinter {
             return switch (this) {
                 case EXTENDED_BPSEQ -> "Extended BPSEQ";
                 case BPSEQ -> "BPSEQ";
-                case DBN -> "Dot-Bracket Notation";
+              //  case DBN -> "Dot-Bracket Notation";
             };
         }
 
