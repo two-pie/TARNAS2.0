@@ -41,4 +41,25 @@ public class X3DNATest {
         
         System.out.println("X3DNA parsed " + structure.getPairs().size() + " pairs");
     }
+
+    @Test
+    public void testX3DNAParsing2() throws Exception {
+        File inputFile = new File(this.getClass().getResource("/4plx_A_dssr.json").toURI());
+        CharStream charStream = CharStreams.fromReader(new FileReader(inputFile));
+        JSONLexer lexer = new JSONLexer(charStream);
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        JSONParser parser = new JSONParser(tokens);
+
+        JSONX3dnaListener listener = new JSONX3dnaListener();
+        ParseTreeWalker walker = new ParseTreeWalker();
+        walker.walk(listener, parser.json());
+
+        ExtendedRNASecondaryStructure structure = listener.getStructure();
+
+        // Verify we got some pairs
+        assertNotNull(structure);
+        assertFalse(structure.getPairs().isEmpty(), "Should have parsed some base pairs");
+
+        System.out.println("X3DNA parsed " + structure.getPairs().size() + " pairs");
+    }
 }

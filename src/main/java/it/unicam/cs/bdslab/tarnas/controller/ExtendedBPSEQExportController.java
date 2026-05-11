@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class ExtendedBPSEQExportController {
@@ -40,7 +41,8 @@ public class ExtendedBPSEQExportController {
 
     public int exportForTool(TOOL tool, Path sharedDirectory,
         RNASecondaryStrucutrePrinter.OutputFormat secondaryStrcutureFormat,
-        RNASecondaryStrucutrePrinter.OutputFormat extendendStructureFormat
+        RNASecondaryStrucutrePrinter.OutputFormat extendendStructureFormat,
+        Map<String, String> supportSequences
     ) throws IOException {
         if (tool == null || sharedDirectory == null) return 0;
 
@@ -55,7 +57,16 @@ public class ExtendedBPSEQExportController {
 
         int exported = 0;
         for (ExportItem item : structures) {
-            ensureSequence(item.structure());
+            if (!tool.giveStructure())
+                item.structure().setSequence(supportSequences.getOrDefault(sanitize(item.baseName()),
+                        "N".repeat(
+                                item.structure().getPairs().stream()
+                                        .mapToInt(p -> Math.max(p.getPos1(), p.getPos2()))
+                                        .max()
+                                        .orElse(0)
+                        )
+                ));
+
             if (secondaryStrcutureFormat != null) {
                 String content = printer.printBPSEQ(item.structure());
                 String fileName = sanitize(item.baseName()) + item.suffix() + "_" + tool.getName() + ".bpseq.txt";
@@ -78,7 +89,7 @@ public class ExtendedBPSEQExportController {
         return sharedDirectory.resolve("output");
     }
 
-    private List<ExportItem> loadStructures(TOOL tool, Path sharedDirectory) throws IOException {
+    public List<ExportItem> loadStructures(TOOL tool, Path sharedDirectory) throws IOException {
         return switch (tool) {
             case RNAVIEW -> parseRNAView(sharedDirectory.resolve("rnaview-output"));
             case RNAPOLIS_ANNOTATOR -> parseRNApolis(sharedDirectory.resolve("rnapolis-output"));
@@ -195,7 +206,7 @@ public class ExtendedBPSEQExportController {
     private String baseNameFor(TOOL tool, Path file) {
         String name = file.getFileName().toString();
 
-        return switch (tool) {
+        return Arrays.stream((switch (tool) {
             case RNAVIEW -> stripSuffixes(name, ".pdb.out", ".out");
             case RNAPOLIS_ANNOTATOR -> stripSuffixes(name, ".3db");
             case BARNABA -> stripSuffixes(name, ".ANNOTATE.pairing.out", ".ANNOTATE.stacking.out", ".out");
@@ -205,9 +216,12 @@ public class ExtendedBPSEQExportController {
                 yield split > 0 ? cleaned.substring(0, split) : cleaned;
             }
             case FR3D -> stripSuffixes(name, "_basepair.json", ".json");
-            case X3DNA -> stripSuffixes(name, "_bp_order.dat", ".dat");
+            case X3DNA -> stripSuffixes(name, "_dssr.json", ".json");
             case MC_ANNOTATE -> stripSuffixes(name, ".txt");
-        };
+        }).split("_"))
+                .limit(2)
+                .collect(Collectors.joining("_"))
+                .toUpperCase(Locale.ROOT);
     }
 
     private static String stripSuffixes(String value, String... suffixes) {
@@ -221,42 +235,6 @@ public class ExtendedBPSEQExportController {
         return result;
     }
 
-    private void ensureSequence(ExtendedRNASecondaryStructure structure) {
-        if (structure == null) return;
-
-        String sequence = structure.getSequence();
-        if (sequence != null && !sequence.isBlank()) return;
-
-        int maxPosition = structure.getPairs().stream()
-                .mapToInt(p -> Math.max(p.getPos1(), p.getPos2()))
-                .max()
-                .orElse(-1);
-
-        if (maxPosition < 0) {
-            structure.setSequence("");
-            return;
-        }
-
-        char[] inferred = new char[maxPosition + 1];
-        Arrays.fill(inferred, 'N');
-
-        structure.getPairs().forEach(pair -> {
-            if (pair.getPos1() >= 0 && pair.getPos1() < inferred.length) {
-                inferred[pair.getPos1()] = toNucleotide(pair.getNucleotide1());
-            }
-            if (pair.getPos2() >= 0 && pair.getPos2() < inferred.length) {
-                inferred[pair.getPos2()] = toNucleotide(pair.getNucleotide2());
-            }
-        });
-
-        structure.setSequence(new String(inferred));
-    }
-
-    private char toNucleotide(String value) {
-        if (value == null || value.isBlank()) return 'N';
-        return Character.toUpperCase(value.strip().charAt(0));
-    }
-
     private String sanitize(String value) {
         String normalized = Objects.requireNonNullElse(value, "unknown").trim();
         if (normalized.isEmpty()) return "unknown";
@@ -266,6 +244,6 @@ public class ExtendedBPSEQExportController {
                 .toUpperCase(Locale.ROOT);
     }
 
-    private record ExportItem(String baseName, String suffix, ExtendedRNASecondaryStructure structure) {
+    public record ExportItem(String baseName, String suffix, ExtendedRNASecondaryStructure structure) {
     }
 }

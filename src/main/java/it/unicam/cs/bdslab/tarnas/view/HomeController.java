@@ -4,6 +4,7 @@ import it.unicam.cs.bdslab.tarnas.controller.DockerController;
 import it.unicam.cs.bdslab.tarnas.controller.ExtendedBPSEQExportController;
 import it.unicam.cs.bdslab.tarnas.controller.IOController;
 import it.unicam.cs.bdslab.tarnas.models.StructureInfo;
+import it.unicam.cs.bdslab.tarnas.models.StructureStatus;
 import it.unicam.cs.bdslab.tarnas.parser.output.RNASecondaryStrucutrePrinter;
 import it.unicam.cs.bdslab.tarnas.view.utils.TOOL;
 import javafx.beans.property.*;
@@ -32,7 +33,9 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import javafx.stage.FileChooser;
 
@@ -357,6 +360,15 @@ public class HomeController {
                 updateProgress(0, selectedTools.size());
                 int total = selectedTools.size();
                 int count = 0;
+                Map<String, String> supportSequences = Map.of();
+
+                if (selectedTools.stream().anyMatch(Predicate.not(TOOL::giveStructure))) {
+                    actionsMap.get(RNAPOLIS_ANNOTATOR).run();
+                    supportSequences = extendedBPSEQExportController.loadStructures(TOOL.RNAPOLIS_ANNOTATOR, ioController.getSharedDirectory())
+                            .stream()
+                            .map(e -> Map.entry(e.baseName(), e.structure().getSequence()))
+                            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                }
 
                 for (TOOL tool : selectedTools) {
 
@@ -370,9 +382,14 @@ public class HomeController {
                     extendedBPSEQExportController.exportForTool(
                             tool,
                             ioController.getSharedDirectory(),
-                            ck_extractSS.isSelected() ? RNASecondaryStrucutrePrinter.OutputFormat.BPSEQ : null,
-                            ck_extractESS.isSelected() ? RNASecondaryStrucutrePrinter.OutputFormat.EXTENDED_BPSEQ
-                                    : null);
+                            ck_extractSS.isSelected()
+                                    ? RNASecondaryStrucutrePrinter.OutputFormat.BPSEQ
+                                    : null,
+                            ck_extractESS.isSelected()
+                                    ? RNASecondaryStrucutrePrinter.OutputFormat.EXTENDED_BPSEQ
+                                    : null,
+                            supportSequences
+                            );
 
                     count++;
                     updateProgress(count, total);
@@ -390,6 +407,9 @@ public class HomeController {
         title.textProperty().bind(task.messageProperty());
 
         task.setOnSucceeded(e -> {
+            this.filesTable.getItems()
+                            .forEach(s -> s.setStatus(StructureStatus.PROCESSED));
+            this.filesTable.refresh();
             loadingAlert.close();
 
             showAlert(
