@@ -96,9 +96,6 @@ public class HomeController {
     private CheckBox ck_extractESS;
 
     @FXML
-    private CheckBox ck_consensus;
-
-    @FXML
     private ChoiceBox<RNASecondaryStrucutrePrinter.OutputFormat> select_outputSS;
 
     @FXML
@@ -202,7 +199,7 @@ public class HomeController {
             if (selected && !noToolSelected) {
                 btn_run.setDisable(false);
             } else {
-                if (!ck_extractSS.isSelected() && !ck_extractESS.isSelected() && !ck_consensus.isSelected()) {
+                if (!ck_extractSS.isSelected() && !ck_extractESS.isSelected()) {
                     btn_run.setDisable(true);
                 }
             }
