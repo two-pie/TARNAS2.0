@@ -12,7 +12,6 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
 import javafx.scene.control.*;
 
 import javafx.scene.control.cell.CheckBoxListCell;
@@ -32,7 +31,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.List;
 import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -547,76 +545,16 @@ public class HomeController {
     public void handleHelp() {
         String helpContent = """
                             <h2>General information</h2>
-                               RNA secondary structure analysis, including comparison and classification, plays a fundamental
-                                       role in facing different problems, such as the prediction of RNA functions and the study of
-                                       regulating gene expression. Existing tools for RNA analysis do not take secondary structures as
-                                       input in the same formats due to the lack of an input standard to represent RNA secondary
-                                       structures.
-                                       <br>TARNAS supports translations of RNA secondary structures in the following formats:
-                                       <ul>
-                                       <li>BPSEQ - <a href="https://www.ibi.vu.nl/programs/k2nwww/static/data_formats.html" target="_blank">https://www.ibi.vu.nl/programs/k2nwww/static/data_formats.html</a></li>
-                                       <li>CT - <a href="https://www.ibi.vu.nl/programs/k2nwww/static/data_formats.html" target="_blank">https://www.ibi.vu.nl/programs/k2nwww/static/data_formats.html</a></li>
-                                       <li>Dot-Bracket - <a href="https://www.ibi.vu.nl/programs/k2nwww/static/data_formats.html" target="_blank">https://www.ibi.vu.nl/programs/k2nwww/static/data_formats.html</a></li>
-                                       <li>RNAML - <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC1370290/" target="_blank">https://pmc.ncbi.nlm.nih.gov/articles/PMC1370290/</a></li>
-                                       <li>arc-annotated sequence - <a href="https://github.com/bdslab/aspralign" target="_blank">https://github.com/bdslab/aspralign</a></li>
-                                       <li>Fasta (only primary structure) - <a href="https://www.ncbi.nlm.nih.gov/genbank/fastaformat/" target="_blank">https://www.ncbi.nlm.nih.gov/genbank/fastaformat/</a></li>
-                                       </ul>
-                                       <br>
-                                       Moreover, TARNAS allows the user to abstract the RNA secondary structure into three forms, i.e.,
-                                       Core, Core Plus and Shape, and to edit or delete the header of files.
+                               EXTRARNAS (Extract RNA Structures) is a Java application designed to analyze RNA 3D structures and extract their secondary structures and base-pairing interactions. It provides a guided interface to configure and run specialized bioinformatics tools inside isolated Docker environments, generating standardized outputs.
                                <br><br>
-                               <h2>How to use TARNAS</h2>
-                                       There are three main scenarios for using the TARNAS application:
+                               <h2>How to use EXTRARNAS</h2>
+                                       There are a few main steps for using the EXTRARNAS application:
                                        <ol>
-                                           <li>RNA secondary structure translations</li>
-                                           <li>Deleting or retaining comments, blank lines and headers of the file</li>
-                                           <li>Abstracting RNA secondary structures into three views: Core, Core Plus and Shape</li>
+                                           <li>Workspace Setup: select the local directory to share with the Docker container for passing inputs and retrieving outputs.</li>
+                                           <li>Tool Selection: choose the structural analysis tool you want to launch.</li>
+                                           <li>Structure Analysis Level: choose between Secondary Structure (classical pairings) or Extended Secondary Structure (non-canonical interactions).</li>
+                                           <li>Output Formats: Output supports BPSEQ (standard canonical) and Extended BPSEQ (including all bounds).</li>
                                        </ol>
-                                       <em>RNA secondary structure translations scenario.</em>
-                                       <br><br>
-                                       Step 1. In the first step of this scenario, a user should upload the RNA secondary structure provided
-                                       in a supported format.
-                                       <br>The file can be uploaded directly from a local drive (use the &quot;Browse&quot; button
-                                       to browse through the local repositories).
-                                       <br>There are two examples stored in the system and ready for
-                                       processing. Uploaded data can be viewed in the text area after clicking the &quot;Preview&quot; button and
-                                       edited before further processing.
-                                       <br><br>
-                                       Step 2. In this step, the user can decide whether to include or not the header and the output format.
-                                       <br>The user selects the additional option &quot;include reader&quot; to include the header and the format in the
-                                       dropdown menu.
-                                       <br><br>
-                                       Step 3. To start the transformation of secondary structure, the &quot;Run&quot; button should be clicked.
-                                       <br><br>
-                                       <em>Deleting or retaining comments, blank lines and headers of the file.</em>
-                                       <br><br>
-                                       Step 1. In the first step of this scenario, a user should upload the RNA secondary structure provided
-                                       in a supported format.
-                                       <br>The file can be uploaded directly from a local drive (use the &quot;Browse&quot; button
-                                       to browse through the local repositories).
-                                       <br>There are two examples stored in the system and ready for
-                                       processing. Uploaded data can be viewed in the text area after clicking the &quot;Preview&quot; button and
-                                       edited before further processing.
-                                       <br><br>
-                                       Step 2. In this step, the user can decide to remove all comments, lines containing a particular word
-                                       or empty lines by selecting the relative option.
-                                       <br>If the user intends to delete lines containing a particular word, it is necessary to specify the word in the box.
-                                       <br><br>
-                                       Step 3. To start editing or delete the comments, the &quot;Run&quot; button should be clicked.
-                                       <br><br>
-                                       <em>Abstracting RNA secondary structures into three views: Core, Core Plus and Shape</em>
-                                       <br><br>
-                                       Step 1. In the first step of this scenario, a user should upload the RNA secondary structure provided
-                                       in a supported format.
-                                       <br>The file can be uploaded directly from a local drive (use the &quot;Browse&quot; button
-                                       to browse through the local repositories).
-                                       <br>There are two examples stored in the system and ready for
-                                       processing. Uploaded data can be viewed in the text area after clicking the &quot;Preview&quot; button and
-                                       edited before further processing.
-                                       <br><br>
-                                       Step 2. In this step, the user can decide the type of abstractions, such as Core, Core Plus, or Shape by selecting the corresponding option.
-                                       <br><br>
-                                       Step 3. To start editing or delete the comments, the &quot;Run&quot; button should be clicked.
                 """;
 
         showAlertWithContent("Help", "How to Use This Application", helpContent);
@@ -625,22 +563,16 @@ public class HomeController {
     @FXML
     public void handleAbout() {
         String aboutContent = """
-                        <h2>About TARNAS</h2>TARNAS is a tool that translates RNA secondary structures into different formats, including
-                              BPSEQ, CT, RNAML, Dot-Bracket, FASTA (only primary structure) and arc-annotated sequence.
+                        <h2>About EXTRARNAS</h2>EXTRARNAS is a tool that analyzes RNA 3D structures and extracts their secondary structures using specialized bioinformatics tools in containerized environments.
                               <br>
-                              Moreover, TARNAS allows us to abstract RNA secondary structures into three views, namely Core,
-                              Core Plus and Shape.
-                              <br>Finally, TARNAS permits to delete or retain comments, blank lines and
-                              headers of the files.
-                              <br>TARNAS is developed as a standalone desktop application and as a web app.
-                              <br>The standalone desktop application can be found at <a href="https://github.com/bdslab/TARNAS" target="_blank">https://github.com/bdslab/TARNAS</a> and the
-                              web app is at <a href="https://bdslab.unicam.it/tarnas/" target="_blank">https://bdslab.unicam.it/tarnas/</a>
+                              It allows users to extract secondary structures and base-pairing interactions, ranging from canonical A-U, G-C, G-U pairs to fully extended non-canonical bounds.
+                              <br>EXTRARNAS is developed as a standalone desktop application.
+                              <br>It currently leverages Docker to execute tools like x3dna-dssr and others in isolated, perfectly reproducible environments.
                              <br><br>
                         <h2>Citations</h2>
-                        Any published work that has made use of TARNAS may cite the following paper:
+                        Any published work that has made use of EXTRARNAS may cite the following paper:
                             <br><br>
-                            Michela Quadrini, Piero Hierro Canchari, Piermichele Rosati, and Luca Tesei, TARNAS, a
-                            TrAnslator for RNA Secondary structure formats.
+                            EXTRARNAS, a tool for RNA Structures Extraction.
                         <br><br>
                         <h2>Acknowledgements and Funding</h2><em>This work was supported by the European Union - Next-Generation EU - National Recovery and
                             Resilience Plan (NRRP) - MISSION 4 COMPONENT 2, INVESTMENT N. 1.1, CALL PRIN 2022
@@ -648,14 +580,14 @@ public class HomeController {
                             <a href="https://bdslab.unicam.it/rna2fun/" target="_blank">https://bdslab.unicam.it/rna2fun/</a></em>
                 """;
 
-        showAlertWithContent("About TARNAS", "About This Application", aboutContent);
+        showAlertWithContent("About EXTRARNAS", "About This Application", aboutContent);
     }
 
     @FXML
     public void handleContactUs() {
         String contactUsContent = """
                 <h2>Contact Us</h2>
-                        <b class="bigger_text">TARNAS has been realised within the <a href="http://www.emanuelamerelli.eu/bigdata/doku.php" target="_blank">BioShape and Data Science Lab</a> with the contribution of Piero Jean Pier Hierro Canchari, Michela Quadrini, Piermichele Rosati and Luca Tesei.</b>
+                        <b class="bigger_text">EXTRARNAS has been realised within the <a href="http://www.emanuelamerelli.eu/bigdata/doku.php" target="_blank">BioShape and Data Science Lab</a> with the contribution of Piero Jean Pier Hierro Canchari, Michela Quadrini, Piermichele Rosati, Di Petta Federico and Luca Tesei.</b>
                         <p>Lab website: <a href="https://bdslab.unicam.it" target="_blank">https://bdslab.unicam.it</a></p>
 
                         <p>RNA2Fun Project website: <a href="https://bdslab.unicam.it/rna2fun/" target="_blank">https://bdslab.unicam.it/rna2fun/</a></p>
@@ -668,6 +600,6 @@ public class HomeController {
 
                         <p>Personal website: <a href="http://www.lucatesei.com" target="_blank">http://www.lucatesei.com</a></p>
                 """;
-        showAlertWithContent("About TARNAS", "Contact Us", contactUsContent);
+        showAlertWithContent("About EXTRARNAS", "Contact Us", contactUsContent);
     }
 }
