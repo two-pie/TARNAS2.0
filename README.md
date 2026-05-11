@@ -1,6 +1,6 @@
-#  EXTRARANAS (Tool for the Analysis of RNA Structures)
+#  EXTRARNAS (Tool for the Analysis of RNA Structures)
 
-EXTRARANAS is a Java application designed to analyze RNA 3D structures and extract their secondary structures and base-pairing interactions. It provides a guided interface to configure and run specialized bioinformatics tools inside isolated environments, generating standardized outputs.
+EXTRARNAS is a Java application designed to analyze RNA 3D structures and extract their secondary structures and base-pairing interactions. It provides a guided interface to configure and run specialized bioinformatics tools inside isolated environments, generating standardized outputs.
 
 ## Features & Workflow
 
@@ -20,7 +20,7 @@ In EXTRARNAS, **Canonical base pairs** correspond strictly to standard Watson-Cr
 
 ## The Role of Docker
 
-EXTRARANAS leverages **Docker containers** to run its underlying analysis tools. 
+EXTRARNAS leverages **Docker containers** to run its underlying analysis tools. 
 Using containers guarantees that:
 - You do not need to manually install complex third-party tools, compilers, or specific language versions (such as old Python versions) on your machine.
 - Executions are perfectly reproducible and run in an isolated environment.
@@ -38,14 +38,14 @@ To compile the application and generate the executable package, run:
 ```bash
 mvn clean package
 ```
-This will place the executable `TEXTRARNAS-0.0.1-0.0.1-SNAPSHOT-fat.jar` and its required `docker/` folder in the `target/` directory.
+This will place the executable `EXTRARNAS-fat.jar` and its required `docker/` folder in the `target/` directory.
 
 ## Usage
 
-To start EXTRARANAS, simply run the jar file via terminal. Make sure you are in the same folder where the `.jar` and the `docker/` directory reside. Make sure to also have installed and running Docker. For start the application run the following command:
+To start EXTRARNAS, simply run the jar file via terminal. Make sure you are in the same folder where the `.jar` and the `docker/` directory reside. Make sure to also have installed and running Docker. For start the application run the following command:
 
 ```bash
-java -jar EXTRARNAS-0.0.1-SNAPSHOT-fat.jar
+java -jar EXTRARNAS-fat.jar
 ```
 
 *(You don't need to specify extra complex classpath flags since it's a "fat" jar containing all its dependencies).*
