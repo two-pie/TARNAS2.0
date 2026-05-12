@@ -553,7 +553,7 @@ public class HomeController {
                                            <li>Workspace Setup: select the local directory to share with the Docker container for passing inputs and retrieving outputs.</li>
                                            <li>Tool Selection: choose the structural analysis tool you want to launch.</li>
                                            <li>Structure Analysis Level: choose between Secondary Structure (classical pairings) or Extended Secondary Structure (non-canonical interactions).</li>
-                                           <li>Output Formats: Output supports BPSEQ (standard canonical) and Extended BPSEQ (including all bounds).</li>
+                                           <li>Output Formats: Output supports BPSEQ (standard canonical) and Extended BPSEQ (including all bonds).</li>
                                        </ol>
                 """;
 
@@ -567,17 +567,7 @@ public class HomeController {
                               <br>
                               It allows users to extract secondary structures and base-pairing interactions, ranging from canonical A-U, G-C, G-U pairs to fully extended non-canonical bounds.
                               <br>EXTRARNAS is developed as a standalone desktop application.
-                              <br>It currently leverages Docker to execute tools like x3dna-dssr and others in isolated, perfectly reproducible environments.
-                             <br><br>
-                        <h2>Citations</h2>
-                        Any published work that has made use of EXTRARNAS may cite the following paper:
-                            <br><br>
-                            EXTRARNAS, a tool for RNA Structures Extraction.
-                        <br><br>
-                        <h2>Acknowledgements and Funding</h2><em>This work was supported by the European Union - Next-Generation EU - National Recovery and
-                            Resilience Plan (NRRP) - MISSION 4 COMPONENT 2, INVESTMENT N. 1.1, CALL PRIN 2022
-                            PNRR D.D. 1409 of 14th Sep 2022 - RNA2FUN CUP N. J53D23014960001- RNA2Fun:
-                            <a href="https://bdslab.unicam.it/rna2fun/" target="_blank">https://bdslab.unicam.it/rna2fun/</a></em>
+                              <br>It currently leverages Docker to execute tools like RNAVIEW and others in isolated, perfectly reproducible environments.
                 """;
 
         showAlertWithContent("About EXTRARNAS", "About This Application", aboutContent);

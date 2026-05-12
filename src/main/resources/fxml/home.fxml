@@ -22,11 +22,6 @@
                       <MenuItem mnemonicParsing="false" onAction="#handleAbout" text="About" />
                     </items>
                   </Menu>
-                  <Menu mnemonicParsing="false" text="Contact Us">
-                    <items>
-                      <MenuItem mnemonicParsing="false" onAction="#handleContactUs" text="Contact Us" />
-                    </items>
-                  </Menu>
                     </menus>
                 </MenuBar>
             </top>
@@ -45,26 +40,6 @@
                           </BorderPane.margin>
                       </TableView>
                </bottom>
-               <right>
-                  <ImageView fitHeight="87.0" fitWidth="98.0" pickOnBounds="true" preserveRatio="true" BorderPane.alignment="CENTER">
-                     <image>
-                        <Image url="@../img/logo_lab_bioShape.png" />
-                     </image>
-                     <BorderPane.margin>
-                        <Insets right="50.0" />
-                     </BorderPane.margin>
-                  </ImageView>
-               </right>
-               <left>
-                  <ImageView fitHeight="88.0" fitWidth="101.0" pickOnBounds="true" preserveRatio="true" BorderPane.alignment="CENTER">
-                     <image>
-                        <Image url="@../img/UNICAM_logo.png" />
-                     </image>
-                     <BorderPane.margin>
-                        <Insets left="50.0" />
-                     </BorderPane.margin>
-                  </ImageView>
-               </left>
                <center>
                   <ImageView fitHeight="136.0" fitWidth="140.0" pickOnBounds="true" preserveRatio="true" BorderPane.alignment="CENTER">
                      <image>
@@ -89,27 +64,6 @@
          </right>
          <bottom>
             <BorderPane prefHeight="146.0" prefWidth="1246.0" BorderPane.alignment="CENTER">
-               <left>
-                  <ImageView fitHeight="52.0" fitWidth="166.0" pickOnBounds="true" preserveRatio="true" BorderPane.alignment="CENTER">
-                     <image>
-                        <Image url="@../img/logo_mur.jpg" />
-                     </image>
-                  </ImageView>
-               </left>
-               <center>
-                  <ImageView fitHeight="52.0" fitWidth="269.0" pickOnBounds="true" preserveRatio="true" BorderPane.alignment="CENTER">
-                     <image>
-                        <Image url="@../img/logo_next.png" />
-                     </image>
-                  </ImageView>
-               </center>
-               <right>
-                  <ImageView fitHeight="94.0" fitWidth="282.0" pickOnBounds="true" BorderPane.alignment="CENTER">
-                     <image>
-                        <Image url="@../img/logo_pnrr.jpg" />
-                     </image>
-                  </ImageView>
-               </right>
                <BorderPane.margin>
                   <Insets bottom="-15.0" left="15.0" right="15.0" top="20.0" />
                </BorderPane.margin>
@@ -139,7 +93,7 @@
                         </GridPane>
                      </top>
                      <bottom>
-                        <Label prefHeight="35.0" prefWidth="1270.0" text="This website received funding from the European Union - Next-GenerationEU - National Recovery and Resilience Plan (NRRP) – MISSION 4 COMPONENT 2, INVESTMENT N. 1.1, CALL PRIN 2022 PNRR D.D. 1409 of 14th Sep 2022 - RNA2Fun CUP N. J53D23014960001" textAlignment="CENTER" wrapText="true" BorderPane.alignment="CENTER" />
+                        <Label prefHeight="35.0" prefWidth="1270.0" textAlignment="CENTER" wrapText="true" BorderPane.alignment="CENTER" />
                      </bottom>
                   </BorderPane>
                </top>
