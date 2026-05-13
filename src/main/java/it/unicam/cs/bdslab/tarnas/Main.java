@@ -36,7 +36,7 @@ import java.util.logging.Logger;
 
 public class Main extends Application {
     public static Main instance;
-    public static final Logger logger = Logger.getLogger("it.unicam.cs.bdslab.tarnas.main");
+    public static final Logger logger = Logger.getLogger(Main.class.getName());
     private Stage stage;
 
     @Override
@@ -183,6 +183,7 @@ public class Main extends Application {
     }
 
     public static void main(String[] args) {
+        System.setProperty("java.util.logging.SimpleFormatter.format", "[%1$tF %1$tT] [%4$-7s] %5$s %n");
         launch();
     }
 
