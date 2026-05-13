@@ -24,7 +24,7 @@ import java.util.logging.Logger;
 
 public class DockerController {
 
-    public static final Logger logger = Logger.getLogger("it.unicam.cs.bdslab.tarnas.controller.DockerController");
+    public static final Logger logger = Logger.getLogger(DockerController.class.getName());
 
     private static DockerController instance = new DockerController();
 

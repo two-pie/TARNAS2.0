@@ -27,7 +27,7 @@ import java.util.stream.Stream;
 
 public class ExtendedBPSEQExportController {
 
-    public static final Logger logger = Logger.getLogger("it.unicam.cs.bdslab.tarnas.controller.ExtendedBPSEQExportController");
+    public static final Logger logger = Logger.getLogger(ExtendedBPSEQExportController.class.getName());
 
     private static final ExtendedBPSEQExportController instance = new ExtendedBPSEQExportController();
     private final RNASecondaryStrucutrePrinter printer = new RNASecondaryStrucutrePrinter();
