@@ -111,7 +111,7 @@ public enum BondType {
     }
 
     public boolean isCanonical() {
-        return this == CANONICAL || this == LEONTIS_WESTHOF_cWW || this == LEONTIS_WESTHOF_tWW;
+        return this == CANONICAL || this == LEONTIS_WESTHOF_cWW;
     }
 
     /**
