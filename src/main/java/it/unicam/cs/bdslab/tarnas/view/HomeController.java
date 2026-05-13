@@ -248,6 +248,17 @@ public class HomeController {
             }
 
             label_folder.setText("Folder: " + sharedDirectory);
+
+            Alert loadingAlert = new Alert(Alert.AlertType.INFORMATION);
+            loadingAlert.setTitle("Processing CSV");
+            loadingAlert.setHeaderText(null);
+            
+            ProgressBar bar = new ProgressBar();
+            bar.setPrefWidth(380);
+            VBox box = new VBox(10, new Label("Loading molecules from CSV..."), bar);
+            loadingAlert.getDialogPane().setContent(box);
+            loadingAlert.getDialogPane().getButtonTypes().clear();
+
             Task<List<StructureInfo>> preprocessTask = new Task<>() {
                 @Override
                 protected List<StructureInfo> call() throws Exception {
@@ -256,18 +267,24 @@ public class HomeController {
             };
 
             preprocessTask.setOnSucceeded(ev -> {
+                loadingAlert.setResult(ButtonType.OK);
+                loadingAlert.close();
                 List<StructureInfo> generatedStructures = preprocessTask.getValue();
                 structures.setAll(generatedStructures);
                 logger.info("Loaded " + generatedStructures.size() + " molecules from preprocessed output");
             });
 
-            preprocessTask.setOnFailed(ev ->
-                    showAlert(Alert.AlertType.ERROR, "CSV preprocessing error", "",
-                            Optional.ofNullable(preprocessTask.getException())
-                                    .map(Throwable::getMessage)
-                                    .orElse("Unknown preprocessing error")));
+            preprocessTask.setOnFailed(ev -> {
+                loadingAlert.setResult(ButtonType.OK);
+                loadingAlert.close();
+                showAlert(Alert.AlertType.ERROR, "CSV preprocessing error", "",
+                        Optional.ofNullable(preprocessTask.getException())
+                                .map(Throwable::getMessage)
+                                .orElse("Unknown preprocessing error"));
+            });
 
             new Thread(preprocessTask, "csv-preprocess").start();
+            loadingAlert.show();
         } catch (Exception e) {
             showAlert(Alert.AlertType.ERROR, "CSV load error", "", e.getMessage());
         }
@@ -350,7 +367,7 @@ public class HomeController {
         VBox box = new VBox(10, title, bar, percent);
         loadingAlert.getDialogPane().setContent(box);
         loadingAlert.getDialogPane().setPrefWidth(460);
-
+        loadingAlert.getDialogPane().getButtonTypes().clear();
         Task<Void> task = new Task<>() {
             @Override
             protected Void call() throws Exception {
@@ -407,18 +424,30 @@ public class HomeController {
             this.filesTable.getItems()
                             .forEach(s -> s.setStatus(StructureStatus.PROCESSED));
             this.filesTable.refresh();
+            loadingAlert.setResult(ButtonType.OK);
             loadingAlert.close();
 
-            showAlert(
-                    Alert.AlertType.INFORMATION,
-                    "Process Completed",
-                    "",
-                    "Selected tools have been executed and output files are saved in: "
-                            + ioController.getSharedDirectory());
+            javafx.application.Platform.runLater(() -> {
+                showAlert(
+                        Alert.AlertType.INFORMATION,
+                        "Process Completed",
+                        "",
+                        "Selected tools have been executed and output files are saved in: "
+                                + ioController.getSharedDirectory());
+            });
         });
 
-        new Thread(task).start();
+        task.setOnFailed(e -> {
+            loadingAlert.setResult(ButtonType.OK);
+            loadingAlert.close();
+            javafx.application.Platform.runLater(() -> {
+                showAlert(Alert.AlertType.ERROR, "Process Error", "", 
+                    "An error occurred during execution: " + task.getException().getMessage());
+            });
+        });
+
         loadingAlert.show();
+        new Thread(task).start();
     }
 
     private Map<TOOL, Runnable> actionsMap = Map.of(
