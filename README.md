@@ -73,7 +73,7 @@ java -jar EXTRARNAS-specificBundle-fat.jar
 If you have problem at the startup it's due to a javafx startup error. You have to download **JAVAFX 21** and run the following command
 
 ```bash
-java --module-path "path\to\javafx" --add-modules javafx.controls,javafx.fxml,javafx.web,javafx.graphics,javafx.media -jar EXTRARNAS-fat.jar
+java --module-path "path\to\javafx\lib" --add-modules javafx.controls,javafx.fxml,javafx.web,javafx.graphics,javafx.media -jar EXTRARNAS-fat.jar
 ```
 
 ### Molecules loading error
