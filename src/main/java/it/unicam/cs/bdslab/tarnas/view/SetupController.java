@@ -25,7 +25,7 @@ import java.util.logging.Logger;
 
 public class SetupController {
 
-    public static final Logger logger = Logger.getLogger("it.unicam.cs.bdslab.tarnas.view.SetupController");
+    public static final Logger logger = Logger.getLogger(SetupController.class.getName());
 
     @FXML
     private TextArea sharedDirectoryTextArea;

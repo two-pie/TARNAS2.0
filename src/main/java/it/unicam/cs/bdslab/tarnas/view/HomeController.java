@@ -40,7 +40,7 @@ import javafx.stage.FileChooser;
 import static it.unicam.cs.bdslab.tarnas.view.utils.TOOL.*;
 
 public class HomeController {
-    public static final Logger logger = Logger.getLogger("it.unicam.cs.bdslab.tarnas.view.HomeController");
+    public static final Logger logger = Logger.getLogger(HomeController.class.getName());
 
     public static final String dockerAllToolsImage = "tarnas2.0-image";
     public static final String dockerAllToolsImageTag = "latest";
