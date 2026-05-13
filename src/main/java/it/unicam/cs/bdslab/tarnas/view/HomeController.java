@@ -112,7 +112,9 @@ public class HomeController {
         this.extendedBPSEQExportController = ExtendedBPSEQExportController.getInstance();
 
         if (this.ioController.getSharedDirectory() != null) {
-            label_folder.setText("Folder: " + this.ioController.getSharedDirectory());
+            String folderText = "Folder: " + this.ioController.getSharedDirectory();
+            label_folder.setText(folderText);
+            label_folder.setTooltip(new Tooltip(folderText));
         }
 
         refreshToolListAvailability();
@@ -245,7 +247,9 @@ public class HomeController {
                 return;
             }
 
-            label_folder.setText("Folder: " + sharedDirectory);
+            String folderText = "Folder: " + sharedDirectory;
+            label_folder.setText(folderText);
+            label_folder.setTooltip(new Tooltip(folderText));
 
             Alert loadingAlert = new Alert(Alert.AlertType.INFORMATION);
             loadingAlert.setTitle("Processing CSV");
