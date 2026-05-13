@@ -30,6 +30,7 @@ Using containers guarantees that:
 
 - **Java 21** (or higher).
 - **Docker** installed and running on your system.
+- **JAVAFX 21** (optional).
 
 ## Build from Source
 
@@ -42,10 +43,26 @@ This will place the executable `EXTRARNAS-fat.jar` and its required `docker/` fo
 
 ## Usage
 
-To start EXTRARNAS, simply run the jar file via terminal. Make sure you are in the same folder where the `.jar` and the `docker/` directory reside. Make sure to also have installed and running Docker. For start the application run the following command:
+To start EXTRARNAS, simply run the jar file via terminal. Make sure you are in the same folder where the `.jar` and the `docker/` directory reside. Make sure to also have installed and running Docker. For the application we provide three main bundle (win, mac, linux), chose the speicific jar for your OS. If your os is not listed or the application is not starting up see the next section (JAVAFX Startup problem).
+
+Run the following command on your specific jar:
 
 ```bash
-java -jar EXTRARNAS-fat.jar
+java -jar EXTRARNAS-specificBundle-fat.jar
+```
+
+### JAVFX Startup problem
+If you have problem at the startup it's due to a javafx startup error. You have to download **JAVAFX 21** and run the following commad
+
+```bash
+java --module-path "path\to\javafx" --add-modules javafx.controls,javafx.fxml,javafx.web,javafx.graphics,javafx.media -jar EXTRARNAS-0.0.1-SNAPSHOT-fat.jar
+```
+
+### Molecules loading error
+
+If you recive an error when loading the csv, try to add this option.
+```bash
+java -Dcom.sun.xml.bind.v2.bytecode.ClassTailor.noOptimize=true ...
 ```
 
 *(You don't need to specify extra complex classpath flags since it's a "fat" jar containing all its dependencies).*
