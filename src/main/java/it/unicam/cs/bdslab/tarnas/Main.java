@@ -55,15 +55,14 @@ public class Main extends Application {
      * Call this from Main.stop() like:
      * stopBothContainersWithOneAlert("x3dna-container", "all-tools-container", 10);
      */
-    public void stopBothContainersWithOneAlert(String name1, String name2, Integer timeoutSeconds) {
-        if (DockerController.getInstance().isContainerRunning(HomeController.dockerAllToolsContainer)
-                && DockerController.getInstance().isContainerRunning(HomeController.dockerX3DNAContainer)) {
+    public void stopBothContainersWithOneAlert(String name1, Integer timeoutSeconds) {
+        if (DockerController.getInstance().isContainerRunning(HomeController.dockerAllToolsContainer)) {
             // Build the alert UI
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Stopping Docker Containers");
+            alert.setTitle("Stopping Docker Container");
             alert.setHeaderText(null);
 
-            Label title = new Label("Stopping containers…");
+            Label title = new Label("Stopping containers");
             ProgressBar bar = new ProgressBar(0);
             bar.setPrefWidth(380);
             Label percent = new Label("0%");
@@ -99,23 +98,9 @@ public class Main extends Application {
                     }
                 }
             };
-            Task<Boolean> t2 = new Task<>() {
-                @Override
-                protected Boolean call() {
-                    try {
-                        updateProgress(0, 1);
-                        boolean ok = DockerController.getInstance().stopContainerByNameOrId(name2, timeoutSeconds);
-                        updateProgress(1, 1);
-                        return ok;
-                    } catch (Throwable t) {
-                        updateProgress(1, 1);
-                        return false;
-                    }
-                }
-            };
-
+           
             // Combined progress = average of task progresses
-            DoubleBinding combined = t1.progressProperty().add(t2.progressProperty()).divide(2.0);
+            DoubleBinding combined = t1.progressProperty().divide(1); // only one task, so just use its progress. Extend with more tasks if needed.
             bar.progressProperty().bind(combined);
             percent.textProperty().bind(Bindings.createStringBinding(
                     () -> Math.min(100, (int) Math.round(combined.get() * 100)) + "%",
@@ -123,10 +108,9 @@ public class Main extends Application {
 
             // When BOTH tasks finish, finalize UI
             Runnable onAllDone = () -> {
-                if (t1.isDone() && t2.isDone()) {
+                if (t1.isDone()) {
                     boolean ok1 = getSafe(t1, false);
-                    boolean ok2 = getSafe(t2, false);
-                    title.setText(ok1 && ok2 ? "Containers stopped." : "Some containers failed to stop.");
+                    title.setText(ok1 ? "Container stopped." : "Failed to stop container.");
                     done.set(true);
                     closeBtn.setDisable(false);
 
@@ -147,16 +131,16 @@ public class Main extends Application {
                     onAllDone.run();
                 }
             });
-            t2.stateProperty().addListener((obs, old, st) -> {
-                if (st == Worker.State.SUCCEEDED || st == Worker.State.FAILED || st == Worker.State.CANCELLED) {
-                    onAllDone.run();
-                }
-            });
+            // t2.stateProperty().addListener((obs, old, st) -> {
+            //     if (st == Worker.State.SUCCEEDED || st == Worker.State.FAILED || st == Worker.State.CANCELLED) {
+            //         onAllDone.run();
+            //     }
+            // });
 
             // Run tasks on a small executor (non-daemon so JVM waits if needed)
             ExecutorService pool = Executors.newFixedThreadPool(2);
             pool.submit(t1);
-            pool.submit(t2);
+            // pool.submit(t2);
 
             // Show ONE modal alert and wait until it's closed (which happens when both
             // tasks are done)
@@ -194,7 +178,7 @@ public class Main extends Application {
 
     @Override
     public void stop() {
-        this.stopBothContainersWithOneAlert(HomeController.dockerAllToolsContainer, HomeController.dockerX3DNAContainer,
+        this.stopBothContainersWithOneAlert(HomeController.dockerAllToolsContainer,
                 10);
     }
 
