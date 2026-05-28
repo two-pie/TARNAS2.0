@@ -28,7 +28,6 @@ public class BioJavaController {
         var structure = reader.getStructure(path.toFile());
         var filter = getFilter(chainId);
         var structures = new ArrayList<Structure>();
-
         for (Chain chain : structure.getChains()) {
             if (filter.test(chain)) {
                 StructureImpl singleChainStructure = new StructureImpl();
@@ -92,7 +91,10 @@ public class BioJavaController {
             // accept only specified id
         else {
             Set<String> allowedSet = new HashSet<>(List.of(allowedIds.split(";")));
-            idFilter = chain -> allowedSet.contains(chain.getId());
+            // Confronta sia con getName() (auth_asym_id, es. "2") sia con getId() (label_asym_id, es. "C").
+            // Le catene fornite dal mapping/CSV sono auth_asym_id, esposte da BioJava come getName().
+            idFilter = chain -> allowedSet.contains(chain.getName())
+                    || allowedSet.contains(chain.getId());
         }
         // combine id filter with rna filter
         return idFilter.and(getRNAFilter());

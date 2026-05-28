@@ -82,7 +82,8 @@ public class BpnetParserCustomListener extends BpnetGrammarBaseListener {
     @Override
     public void enterPairs(BpnetGrammarParser.PairsContext ctx) {
         currentPosition = Integer.parseInt(ctx.INT().getFirst().getText());
-        currentNucleotide = String.valueOf(ctx.TEXT().getFirst().getText().charAt(0));
+
+        currentNucleotide = String.valueOf(ctx.chainOrText().getFirst().getText().charAt(0));
 
         sequence.append(currentNucleotide);
     }
@@ -102,7 +103,7 @@ public class BpnetParserCustomListener extends BpnetGrammarBaseListener {
                 currentPosition - 1,
                 Integer.parseInt(ctx.INT().getFirst().getText()) - 1,
                 currentNucleotide,
-                ctx.TEXT().getFirst().getText(),
+                ctx.chainOrText().getFirst().getText(),
                 getType(ctx.BOND().getText()))
         );
     }

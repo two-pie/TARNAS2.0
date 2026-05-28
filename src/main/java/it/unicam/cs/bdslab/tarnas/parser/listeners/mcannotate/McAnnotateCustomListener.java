@@ -108,10 +108,10 @@ public class McAnnotateCustomListener extends McAnnotateGrammarBaseListener {
      */
     @Override
     public void enterResidueLine(McAnnotateGrammarParser.ResidueLineContext ctx) {
+        if (ctx.IDENTIFIER().size() < 2) return;
         String nucleotide = ctx.IDENTIFIER(1).getText();
         this.sequence += nucleotide.length() > 1 ? nucleotide.substring(0, 1) : nucleotide;
-
-        int position = Integer.parseInt(ctx.IDENTIFIER(0).getText().substring(1));
+        int position = extractResidueNumber(ctx.IDENTIFIER(0).getText());
         positionMap.put(position, positionMap.size());
     }
 
@@ -123,7 +123,8 @@ public class McAnnotateCustomListener extends McAnnotateGrammarBaseListener {
      */
     @Override
     public void enterNonAdjacentLine(McAnnotateGrammarParser.NonAdjacentLineContext ctx) {
-        this.structureBuilder.addPair(buildPair(ctx.PAIR_ID().getText(), BondType.fromString("stacking")));
+        Pair p = buildPair(ctx.PAIR_ID().getText(), BondType.fromString("stacking"));
+        if (p != null) this.structureBuilder.addPair(p);
     }
 
     /**
@@ -134,11 +135,17 @@ public class McAnnotateCustomListener extends McAnnotateGrammarBaseListener {
      */
     @Override
     public void enterBasePairLine(McAnnotateGrammarParser.BasePairLineContext ctx) {
-        this.structureBuilder.addPair(
-                buildPair(
-                        ctx.PAIR_ID().getText(),
-                        getBondType(ctx.ORIENTATION(), ctx.BOND().getFirst().getText()))
-        );
+        String bondText = (ctx.BOND() != null && !ctx.BOND().isEmpty())
+                ? ctx.BOND().getFirst().getText() : null;
+        TerminalNode orientation = null;
+        if (ctx.ORIENTATION() != null) {
+            for (TerminalNode o : ctx.ORIENTATION()) {
+                String t = o.getText();
+                if (t.equals("cis") || t.equals("trans")) { orientation = o; break; }
+            }
+        }
+        Pair p = buildPair(ctx.PAIR_ID().getText(), getBondType(orientation, bondText));
+        if (p != null) this.structureBuilder.addPair(p);
     }
 
     /**
@@ -153,14 +160,11 @@ public class McAnnotateCustomListener extends McAnnotateGrammarBaseListener {
      */
     private BondType getBondType(TerminalNode orientation, String bond) {
         if (orientation == null || orientation.getText().isEmpty()) return BondType.UNKNOWN;
-
+        if (bond == null) return BondType.UNKNOWN;
         String o = orientation.getText().equals("cis") ? "c" : "t";
-
         String[] edges = bond.split("/");
-        String edge1 = edges[0].substring(0, 1);
-        String edge2 = edges[1].substring(0, 1);
-
-        return BondType.fromString(o + edge1 + edge2);
+        if (edges.length < 2 || edges[0].isEmpty() || edges[1].isEmpty()) return BondType.UNKNOWN;
+        return BondType.fromString(o + edges[0].substring(0, 1) + edges[1].substring(0, 1));
     }
 
     /**
@@ -178,12 +182,20 @@ public class McAnnotateCustomListener extends McAnnotateGrammarBaseListener {
      */
     private Pair buildPair(String pos, BondType bondType) {
         String[] positions = pos.split("-");
+        if (positions.length < 2) return null;
+        Integer idx1 = positionMap.get(extractResidueNumber(positions[0]));
+        Integer idx2 = positionMap.get(extractResidueNumber(positions[1]));
+        if (idx1 == null || idx2 == null) return null;
+        if (idx1 < 0 || idx1 >= sequence.length() || idx2 < 0 || idx2 >= sequence.length()) return null;
+        String nt1 = String.valueOf(sequence.charAt(idx1));
+        String nt2 = String.valueOf(sequence.charAt(idx2));
+        return new Pair(idx1, idx2, nt1, nt2, bondType);
+    }
 
-        int pos1 = positionMap.get(Integer.parseInt(positions[0].substring(1)));
-        int pos2 = positionMap.get(Integer.parseInt(positions[1].substring(1)));
-        String nt1 = String.valueOf(sequence.charAt(pos1));
-        String nt2 = String.valueOf(sequence.charAt(pos2));
-
-        return new Pair(pos1, pos2, nt1, nt2, bondType);
+    /** Estrae l'intero finale da un residue id: "C158" -> 158, "'3'120" -> 120. */
+    private int extractResidueNumber(String id) {
+        int i = id.length();
+        while (i > 0 && Character.isDigit(id.charAt(i - 1))) i--;
+        return Integer.parseInt(id.substring(i));
     }
 }
