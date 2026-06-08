@@ -642,7 +642,7 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
         var originalMappingPath = findMappingFile(pdbID);
         if (originalMappingPath == null) {
             throw new FileNotFoundException(
-                    "Mapping BeEM non trovato per " + pdbID + " in " + sharedFolder);
+                    "Mapping BeEM not found for " + pdbID + " in " + sharedFolder);
         }
         var formattedMappingPath = originalMappingPath.getParent().resolve(pdbID + "-pdb-mapping.csv");
         // reformat mapping
