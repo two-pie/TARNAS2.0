@@ -724,7 +724,7 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
     private Map<String, String> buildLabelToAuthMap(Path cifFile) throws IOException {
         Map<String, String> labelToAuth = new HashMap<>();
 
-        // Trova l'ordine delle colonne nel loop _atom_site
+        // Find the order of the columns in the '_atom_site' loop
         List<String> columns = new ArrayList<>();
         boolean inAtomSiteHeader = false;
 
