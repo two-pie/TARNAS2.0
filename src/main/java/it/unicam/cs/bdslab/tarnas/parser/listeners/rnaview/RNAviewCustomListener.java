@@ -130,7 +130,7 @@ public class RNAviewCustomListener extends RNAviewGrammarBaseListener {
     @Override
     public void enterAnnotation(RNAviewGrammarParser.AnnotationContext ctx) {
         if (this.pairBuilder == null) {
-            return; // riga saltata in enterBasePairLine
+            return; // skiped row in enterBasePairLine
         }
         if (ctx.STACKED() != null) {
             this.pairBuilder.setType(BondType.fromString("stacking"));
