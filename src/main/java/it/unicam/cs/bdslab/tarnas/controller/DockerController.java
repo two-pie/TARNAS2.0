@@ -214,8 +214,7 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
         deleteDirectoryRecursively(sharedFolder.resolve("bundles"));
         deleteDirectoryRecursively(sharedFolder.resolve("mappings"));
 
-        // Riepilogo finale
-        logger.info("Preprocessing completato: " + ok + " ok, " + failed.size() + " falliti.");
+        logger.info("Preprocessing completed: " + ok + " succeeded, " + failed.size() + " failed.");
         if (!failed.isEmpty()) {
             logger.severe("Molecole NON caricate:");
             for (String f : failed) logger.severe("  " + f);
