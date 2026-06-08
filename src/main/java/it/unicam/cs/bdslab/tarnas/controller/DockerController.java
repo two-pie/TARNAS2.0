@@ -810,7 +810,7 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
                 var newChainId = r.get("New_chain_ID").trim();
                 var originalChainId = r.get("Original_chain_ID").trim();
 
-                // skip rows not matching the specified chain (match ESATTO, non substring)
+                // skip rows not matching the specified chain (if '*' requestedChains is null)
                 if (requestedChains != null && !requestedChains.contains(originalChainId)) {
                     continue;
                 }
