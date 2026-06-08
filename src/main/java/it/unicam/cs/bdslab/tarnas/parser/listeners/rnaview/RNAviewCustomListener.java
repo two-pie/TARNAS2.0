@@ -85,7 +85,7 @@ public class RNAviewCustomListener extends RNAviewGrammarBaseListener {
         this.pairBuilder = new Pair.Builder();
 
         if (ctx.ASSIGNED_NUMBERS() == null || ctx.BASE_PAIR() == null) {
-            // Riga malformata (token mancanti per errore di sintassi residuo): la saltiamo invece di crashare
+            // bad format (missing tokens or syntax errors): skip the row instead of crashing 
             this.pairBuilder = null;
             return;
         }
