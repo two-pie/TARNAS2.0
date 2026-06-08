@@ -112,7 +112,7 @@ public class RNAviewCustomListener extends RNAviewGrammarBaseListener {
     @Override
     public void exitBasePairLine(RNAviewGrammarParser.BasePairLineContext ctx) {
         if (this.pairBuilder == null) {
-            return; // riga saltata in enterBasePairLine
+            return; // skipped row in enterBasePairLine
         }
         this.structureBuilder.addPair(pairBuilder.build());
     }
