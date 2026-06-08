@@ -759,7 +759,7 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
                         if (line == null) break;
                         trimmed = line.trim();
                     } while (trimmed.startsWith("ATOM") || trimmed.startsWith("HETATM"));
-                    break; // finito il blocco atomi
+                    break; // Atom block ended
                 }
             }
         }
