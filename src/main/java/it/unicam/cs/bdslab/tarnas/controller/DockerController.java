@@ -618,7 +618,7 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
     }
 
     private Path findMappingFile(String pdbID) throws IOException {
-        // BeEM scrive "<pdb>-chain-id-mapping.txt"; non assumere il casing
+        // BeEM writes"<pdb>-chain-id-mapping.txt"; do not assume casing
         String suffix = "-chain-id-mapping.txt";
         try (DirectoryStream<Path> ds = Files.newDirectoryStream(sharedFolder, "*" + suffix)) {
             for (Path p : ds) {
