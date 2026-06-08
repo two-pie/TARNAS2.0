@@ -749,7 +749,7 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
                     if (labelIdx < 0 || authIdx < 0) {
                         throw new IOException("Colonne label/auth_asym_id non trovate nel CIF: " + cifFile);
                     }
-                    // processa questa riga e tutte le successive ATOM/HETATM
+                    // Process this row and the next ATOM/HETATM
                     do {
                         String[] tok = trimmed.split("\\s+");
                         if (tok.length > Math.max(labelIdx, authIdx)) {
