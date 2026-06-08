@@ -861,7 +861,7 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
         // e.g. 4PLX.cif -> 4PLX_A.pdb , 4PLX_B.pdb && 4PLX_A.cif , 4PLX_B.cif
         var chain = f.getChains().get(0);
         var authId = chain.getName();   // auth_asym_id (e.g. "2")
-        // mostra il label originale del CSV (es. "CB"); fallback all'auth se non mappato
+        // Shows the label in the CSV (e.g. "CB"); with authId as fallback
         var label = authToLabel.getOrDefault(authId, authId);
         var dst = preprocessedFolder.resolve(pdbID + "_" + label);
         bioJavaController.save(f, dst);
