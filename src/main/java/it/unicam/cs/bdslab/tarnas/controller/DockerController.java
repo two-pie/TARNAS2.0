@@ -735,7 +735,7 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
             while ((line = br.readLine()) != null) {
                 String trimmed = line.trim();
 
-                // Raccogli le intestazioni di colonna _atom_site.*
+                // store the column header _atom_site.*
                 if (trimmed.startsWith("_atom_site.")) {
                     columns.add(trimmed);
                     inAtomSiteHeader = true;
