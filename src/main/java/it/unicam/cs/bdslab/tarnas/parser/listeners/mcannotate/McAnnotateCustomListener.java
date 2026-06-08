@@ -192,7 +192,7 @@ public class McAnnotateCustomListener extends McAnnotateGrammarBaseListener {
         return new Pair(idx1, idx2, nt1, nt2, bondType);
     }
 
-    /** Estrae l'intero finale da un residue id: "C158" -> 158, "'3'120" -> 120. */
+    /** Extract the interger from a residue : "C158" -> 158, "'3'120" -> 120. */
     private int extractResidueNumber(String id) {
         int i = id.length();
         while (i > 0 && Character.isDigit(id.charAt(i - 1))) i--;
