@@ -744,7 +744,7 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
                     continue;
                 }
 
-                // Prima riga di dati ATOM/HETATM: da qui in poi sono coordinate
+                // First row of ATOM/HETATM: after there are only coordinates
                 if (inAtomSiteHeader && (trimmed.startsWith("ATOM") || trimmed.startsWith("HETATM"))) {
                     if (labelIdx < 0 || authIdx < 0) {
                         throw new IOException("Colonne label/auth_asym_id non trovate nel CIF: " + cifFile);
