@@ -827,7 +827,7 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
                 var newChains = entry.getValue();
 
                 if (newChains == null || newChains.isBlank()) {
-                    continue; // nessuna catena richiesta in questo bundle
+                    continue; // no requested chain in this bundle 
                 }
 
                 var bundlePath = bundles.resolve(bundle);
