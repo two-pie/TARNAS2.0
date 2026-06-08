@@ -216,7 +216,7 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
 
         logger.info("Preprocessing completed: " + ok + " succeeded, " + failed.size() + " failed.");
         if (!failed.isEmpty()) {
-            logger.severe("Molecole NON caricate:");
+            logger.severe("Not loaded molecule:");
             for (String f : failed) logger.severe("  " + f);
         }
     }
