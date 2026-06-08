@@ -716,10 +716,10 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
     }
 
     /**
-     * Legge dal file CIF la corrispondenza label_asym_id -> auth_asym_id.
-     * Serve perché il CSV usa il label (es. "CB", multi-char visibile su RCSB)
-     * mentre BeEM/PDB usano l'auth (1 char). Senza questa traduzione il filtro
-     * per catena non trova nulla per le strutture con label != auth.
+     * Reads from the CIF file the label_asym_id -> auth_asym_id.
+     * Because in the CSV file is used the RCSB labling (e.g. "CB")
+     * but BeEM uses the 1 char labling.
+     * So the map should be used to rename chains where: label != auth.
      */
     private Map<String, String> buildLabelToAuthMap(Path cifFile) throws IOException {
         Map<String, String> labelToAuth = new HashMap<>();
