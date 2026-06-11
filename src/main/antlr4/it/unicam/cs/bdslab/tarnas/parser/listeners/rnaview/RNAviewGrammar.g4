@@ -14,17 +14,17 @@ grammar RNAviewGrammar;
 // ------------------------------------
 
 rnaviewFile: basePairLine* EOF ;                       // Zero or more base pair lines
-
 basePairLine: ASSIGNED_NUMBERS
               CHAIN
               NUMBER
               BASE_PAIR
               NUMBER
               CHAIN
+              SYN*
               annotation
+              SYN*
               SAENGER?
-             ;                                         // One line describing a base pair
-
+             ;
 annotation: STACKED | EDGE_PAIR ORIENTATION ;          // Either 'stacked' or edge pair + orientation
 
 
@@ -39,13 +39,14 @@ EDGE_PAIR  : [sSWH+-.?] '/' [sSWH+-.?] ;              // Edge pair notation (e.g
 ORIENTATION: 'cis' | 'tran' ;                         // Orientation (cis or trans)
 NUMBER     : [0-9]+ ;                                 // Integer (residue number)
 ASSIGNED_NUMBERS: NUMBER '_' NUMBER ',';              // Assigned numbers (e.g., 1_2,)
-CHAIN      : [A-Z] ':';                               // Chain identifier (e.g., A:)
+CHAIN      : [A-Za-z0-9] ':';                         // Chain identifier (es. A: oppure 3: per auth numerico)
 BASE_PAIR  : IUPAC_BASE '-' IUPAC_BASE ;              // Base pair (e.g., A-U)
 STACKED    : 'stacked' ;                              // Stacking annotation
+SYN        : 'syn' ;                                  // Sugar-base conformation (syn)
 
-SAENGER: '!' ( '1H' )? '(' [bs] '_' [bs] ')'          // Saenger classification (e.g., !(b_s))
-       | 'n/a'                                        // Not available
-       | [XVI]+ ;                                     // Roman numerals (e.g., XI, VI)
+SAENGER: '!' ( '1H' )? '(' [bs] '_' [bs] ')' '.'?
+       | 'n/a'
+       | [XVI]+ ;
 
 WS : [ \t\r\n]+ -> skip ;                             // Skip whitespace
 

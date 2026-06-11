@@ -15,11 +15,9 @@ grammar BpnetGrammar;
 // ------------------------------------
 
 bpnetFile: pairs+ EOF;                    // One or more pair blocks
-
-pairs: INT INT TEXT '?' TEXT pair*;       // Header line + optional bond details
-
-pair:  INT INT TEXT '?' TEXT BOND;        // Single bond line
-
+pairs: INT INT chainOrText '?' chainOrText pair*;   // Header line + optional bond details
+pair:  INT INT chainOrText '?' chainOrText BOND;    // Single bond line
+chainOrText: TEXT | INT;                  // nucleotide o chain: puo' essere alfabetico (B) o numerico (3)                // Chain/nucleotide field: alfabetico (es. B) o numerico (es. 3)
 
 // ------------------------------------
 // Lexer rules

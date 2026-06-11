@@ -84,6 +84,12 @@ public class RNAviewCustomListener extends RNAviewGrammarBaseListener {
     public void enterBasePairLine(RNAviewGrammarParser.BasePairLineContext ctx) {
         this.pairBuilder = new Pair.Builder();
 
+        if (ctx.ASSIGNED_NUMBERS() == null || ctx.BASE_PAIR() == null) {
+            // bad format (missing tokens or syntax errors): skip the row instead of crashing 
+            this.pairBuilder = null;
+            return;
+        }
+
         String positionsString = ctx.ASSIGNED_NUMBERS().getText().replaceAll(",", "");
         int[] positions = Arrays.stream(positionsString.split("_"))
                 .mapToInt(Integer::parseInt)
@@ -93,6 +99,8 @@ public class RNAviewCustomListener extends RNAviewGrammarBaseListener {
         this.pairBuilder.setPos2(positions[1] - 1);
         this.pairBuilder.setNucleotide1(ctx.BASE_PAIR().getText().split("-")[0]);
         this.pairBuilder.setNucleotide2(ctx.BASE_PAIR().getText().split("-")[1]);
+        // Tipo di default: se enterAnnotation non scatta (annotazione malformata) il tipo resta valido, non null
+        this.pairBuilder.setType(BondType.fromString(null));
     }
 
     /**
@@ -103,6 +111,9 @@ public class RNAviewCustomListener extends RNAviewGrammarBaseListener {
      */
     @Override
     public void exitBasePairLine(RNAviewGrammarParser.BasePairLineContext ctx) {
+        if (this.pairBuilder == null) {
+            return; // skipped row in enterBasePairLine
+        }
         this.structureBuilder.addPair(pairBuilder.build());
     }
 
@@ -118,13 +129,18 @@ public class RNAviewCustomListener extends RNAviewGrammarBaseListener {
      */
     @Override
     public void enterAnnotation(RNAviewGrammarParser.AnnotationContext ctx) {
-        if (ctx.STACKED() == null) {
+        if (this.pairBuilder == null) {
+            return; // skiped row in enterBasePairLine
+        }
+        if (ctx.STACKED() != null) {
+            this.pairBuilder.setType(BondType.fromString("stacking"));
+        } else if (ctx.EDGE_PAIR() != null && ctx.ORIENTATION() != null) {
             this.pairBuilder.setType(getType(ctx.EDGE_PAIR().getText(), ctx.ORIENTATION().getText()));
         } else {
-            this.pairBuilder.setType(BondType.fromString("stacking"));
+            // Annotazione non standard (es. notazione estesa non riconosciuta): tipo sconosciuto invece di crash
+            this.pairBuilder.setType(BondType.fromString(null));
         }
     }
-
     /**
      * Converts an RNAview edge pair and orientation into an internal {@link BondType}.
      * <p>

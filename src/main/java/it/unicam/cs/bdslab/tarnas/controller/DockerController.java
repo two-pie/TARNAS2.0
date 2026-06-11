@@ -14,7 +14,7 @@ import it.unicam.cs.bdslab.tarnas.models.StructureInfo;
 import it.unicam.cs.bdslab.tarnas.models.StructureStatus;
 import org.apache.commons.csv.CSVFormat;
 import org.biojava.nbio.structure.Structure;
-
+import java.util.stream.Collectors;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -152,6 +152,8 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
      */
     private void processCsvAndFilterPdbs(Path csvFile) throws IOException {
         var preprocessedFolder = sharedFolder.resolve("preprocessed");
+        int ok = 0;
+        List<String> failed = new ArrayList<>();
         try (BufferedReader br = Files.newBufferedReader(csvFile, StandardCharsets.UTF_8)) {
             String line;
             boolean headerSkipped = false;
@@ -189,6 +191,7 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
                         }
                     } catch (Exception e) {
                         logger.severe("ERROR: " + e);
+                        failed.add(pdbID + "," + chain + " -> download/beem: " + e.getMessage());
                         continue;
                     }
                 }
@@ -199,9 +202,10 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
                     } else {
                         filterCIF(chain, pdbID, preprocessedFolder);
                     }
-
+                    ok++;
                 } catch (Exception e) {
                     logger.severe("Failed processing row: " + line + " - " + e.getMessage() + " " + e);
+                    failed.add(pdbID + "," + chain + " -> " + e.getMessage());
                 }
             }
         }
@@ -209,6 +213,12 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
         // DELETE bundles and mappings directories after processing
         deleteDirectoryRecursively(sharedFolder.resolve("bundles"));
         deleteDirectoryRecursively(sharedFolder.resolve("mappings"));
+
+        logger.info("Preprocessing completed: " + ok + " succeeded, " + failed.size() + " failed.");
+        if (!failed.isEmpty()) {
+            logger.severe("Not loaded molecule:");
+            for (String f : failed) logger.severe("  " + f);
+        }
     }
 
     private static String[] parseRow(String line) {
@@ -607,6 +617,21 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
         //this.buildMappingsCSV();
     }
 
+    private Path findMappingFile(String pdbID) throws IOException {
+        // BeEM writes"<pdb>-chain-id-mapping.txt"; do not assume casing
+        String suffix = "-chain-id-mapping.txt";
+        try (DirectoryStream<Path> ds = Files.newDirectoryStream(sharedFolder, "*" + suffix)) {
+            for (Path p : ds) {
+                String fn = p.getFileName().toString();
+                String base = fn.substring(0, fn.length() - suffix.length());
+                if (base.equalsIgnoreCase(pdbID)) {
+                    return p;
+                }
+            }
+        }
+        return null;
+    }
+
 
     /**
      * Takes the PDB ID related to the CIF file and saves mappings and bundles under mappingsPath and bundlesPath.
@@ -614,7 +639,11 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
      * @param pdbID
      */
     private void moveFiles(String pdbID) throws Exception {
-        var originalMappingPath = sharedFolder.resolve(pdbID.toLowerCase() + "-chain-id-mapping.txt");
+        var originalMappingPath = findMappingFile(pdbID);
+        if (originalMappingPath == null) {
+            throw new FileNotFoundException(
+                    "Mapping BeEM not found for " + pdbID + " in " + sharedFolder);
+        }
         var formattedMappingPath = originalMappingPath.getParent().resolve(pdbID + "-pdb-mapping.csv");
         // reformat mapping
         var bundles = reformatCSV(originalMappingPath, formattedMappingPath);
@@ -660,7 +689,6 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
                     writer.newLine();
                 }
             }
-
             Files.delete(inputPath);
 
             System.out.println("Reformatted CSV written to: " + outputPath.toAbsolutePath());
@@ -687,9 +715,83 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
         }
     }
 
+    /**
+     * Reads from the CIF file the label_asym_id -> auth_asym_id.
+     * Because in the CSV file is used the RCSB labling (e.g. "CB")
+     * but BeEM uses the 1 char labling.
+     * So the map should be used to rename chains where: label != auth.
+     */
+    private Map<String, String> buildLabelToAuthMap(Path cifFile) throws IOException {
+        Map<String, String> labelToAuth = new HashMap<>();
+
+        // Find the order of the columns in the '_atom_site' loop
+        List<String> columns = new ArrayList<>();
+        boolean inAtomSiteHeader = false;
+
+        try (BufferedReader br = Files.newBufferedReader(cifFile, StandardCharsets.UTF_8)) {
+            String line;
+            int labelIdx = -1, authIdx = -1;
+
+            while ((line = br.readLine()) != null) {
+                String trimmed = line.trim();
+
+                // store the column header _atom_site.*
+                if (trimmed.startsWith("_atom_site.")) {
+                    columns.add(trimmed);
+                    inAtomSiteHeader = true;
+                    if (trimmed.equals("_atom_site.label_asym_id")) labelIdx = columns.size() - 1;
+                    if (trimmed.equals("_atom_site.auth_asym_id"))  authIdx  = columns.size() - 1;
+                    continue;
+                }
+
+                // First row of ATOM/HETATM: after there are only coordinates
+                if (inAtomSiteHeader && (trimmed.startsWith("ATOM") || trimmed.startsWith("HETATM"))) {
+                    if (labelIdx < 0 || authIdx < 0) {
+                        throw new IOException("Colonne label/auth_asym_id non trovate nel CIF: " + cifFile);
+                    }
+                    // Process this row and the next ATOM/HETATM
+                    do {
+                        String[] tok = trimmed.split("\\s+");
+                        if (tok.length > Math.max(labelIdx, authIdx)) {
+                            labelToAuth.putIfAbsent(tok[labelIdx], tok[authIdx]);
+                        }
+                        line = br.readLine();
+                        if (line == null) break;
+                        trimmed = line.trim();
+                    } while (trimmed.startsWith("ATOM") || trimmed.startsWith("HETATM"));
+                    break; // Atom block ended
+                }
+            }
+        }
+        return labelToAuth;
+    }
+
     private void filterCIF(String chain, String pdbID, Path preprocessedFolder) throws Exception {
         var mapping = sharedFolder.resolve("mappings").resolve(pdbID + "-pdb-mapping.csv");
         var bundles = sharedFolder.resolve("bundles");
+
+        // --- TRADUZIONE label -> auth dal CIF originale ---
+        var cifFile = sharedFolder.resolve(pdbID + ".cif");
+        Set<String> requestedChains;
+        // mappa auth_asym_id -> label originale del CSV, per mostrare la catena come l'utente l'ha richiesta
+        Map<String, String> authToLabel = new HashMap<>();
+        if (chain.equals("*")) {
+            requestedChains = null;
+        } else {
+            var labelToAuth = buildLabelToAuthMap(cifFile);
+            requestedChains = new HashSet<>();
+            for (String c : chain.split(";")) {
+                c = c.trim();
+                if (c.isEmpty()) continue;
+                // se il label esiste nel CIF, usa l'auth corrispondente; altrimenti tieni com'è
+                String auth = labelToAuth.getOrDefault(c, c);
+                requestedChains.add(auth);
+                authToLabel.put(auth, c);   // es. "2" -> "CB"
+                if (!auth.equals(c)) {
+                    logger.info("Catena tradotta label->auth: " + c + " -> " + auth + " (pdb " + pdbID + ")");
+                }
+            }
+        }
 
         try (Reader reader = Files.newBufferedReader(mapping)) {
             var format = CSVFormat.DEFAULT.builder()
@@ -702,16 +804,16 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
             var newChainIds = new HashMap<String, String>();
             var originalChainIds = new HashMap<String, String>();
 
-            for (var r : records) {
-                var file = r.get("File");
-                var newChainId = r.get("New_chain_ID");
-                var originalChainId = r.get("Original_chain_ID");
 
-                // skip rows not matching the specified chain (unless '*' is used)
-                if (!chain.equals("*") && !chain.contains(originalChainId)) {
+            for (var r : records) {
+                var file = r.get("File").trim();
+                var newChainId = r.get("New_chain_ID").trim();
+                var originalChainId = r.get("Original_chain_ID").trim();
+
+                // skip rows not matching the specified chain (if '*' requestedChains is null)
+                if (requestedChains != null && !requestedChains.contains(originalChainId)) {
                     continue;
                 }
-
                 // append newChainId with semicolon
                 newChainIds.merge(file, newChainId, (oldVal, newVal) -> oldVal + ";" + newVal);
 
@@ -724,10 +826,20 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
                 var bundle = entry.getKey();
                 var newChains = entry.getValue();
 
-                var filteredFiles = bioJavaController.filterById(bundles.resolve(bundle), newChains);
+                if (newChains == null || newChains.isBlank()) {
+                    continue; // no requested chain in this bundle 
+                }
+
+                var bundlePath = bundles.resolve(bundle);
+                if (!Files.exists(bundlePath)) {
+                    logger.severe("Bundle mancante: " + bundlePath + " (pdb " + pdbID + ")");
+                    continue;
+                }
+
+                var filteredFiles = bioJavaController.filterById(bundlePath, newChains);
 
                 for (var f : filteredFiles) {
-                    save(f, preprocessedFolder, pdbID, originalChainIds);
+                    save(f, preprocessedFolder, pdbID, authToLabel);
                 }
             }
         }
@@ -744,16 +856,14 @@ private void makeDirInContainer(String containerId, String dir) throws IOExcepti
         logger.info("Wrote filtered PDB and CIF: " + dst);
     }
 
-    private void save(Structure f, Path preprocessedFolder, String pdbID, Map<String, String> originalChainIds) throws Exception {
+    private void save(Structure f, Path preprocessedFolder, String pdbID, Map<String, String> authToLabel) throws Exception {
         // this save is used when a CIF file is translated into its chains
         // e.g. 4PLX.cif -> 4PLX_A.pdb , 4PLX_B.pdb && 4PLX_A.cif , 4PLX_B.cif
-        var newChainId = f.getChains().get(0).getId();
-        var originalChainId = originalChainIds.get(newChainId);
-        var dst = preprocessedFolder.resolve(pdbID
-                + "_"
-                + originalChainId
-                + "_"
-                + newChainId);
+        var chain = f.getChains().get(0);
+        var authId = chain.getName();   // auth_asym_id (e.g. "2")
+        // Shows the label in the CSV (e.g. "CB"); with authId as fallback
+        var label = authToLabel.getOrDefault(authId, authId);
+        var dst = preprocessedFolder.resolve(pdbID + "_" + label);
         bioJavaController.save(f, dst);
         logger.info("Wrote filtered PDB and CIF: " + dst);
     }

@@ -93,7 +93,7 @@ public class ExtendedRNASecondaryStructure {
 
         public Builder addPair(Pair pair) {
             this.pairs.add(pair);
-            if (pair.getType().isCanonical()) {
+            if (pair.getType() != null && pair.getType().isCanonical()) {
                 this.canonical.add(pair);
             }
             return this;
