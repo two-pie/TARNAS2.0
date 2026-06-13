@@ -10,7 +10,7 @@ import it.unicam.cs.bdslab.tarnas.parser.listeners.rnapolis.*;
 import it.unicam.cs.bdslab.tarnas.parser.listeners.rnaview.*;
 import it.unicam.cs.bdslab.tarnas.parser.listeners.x3dna.JSONX3dnaListener;
 import it.unicam.cs.bdslab.tarnas.parser.models.ExtendedRNASecondaryStructure;
-import it.unicam.cs.bdslab.tarnas.parser.output.RNASecondaryStrucutrePrinter;
+import it.unicam.cs.bdslab.tarnas.parser.output.RNASecondaryStructurePrinter;
 import it.unicam.cs.bdslab.tarnas.view.utils.TOOL;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -30,7 +30,7 @@ public class ExtendedBPSEQExportController {
     public static final Logger logger = Logger.getLogger(ExtendedBPSEQExportController.class.getName());
 
     private static final ExtendedBPSEQExportController instance = new ExtendedBPSEQExportController();
-    private final RNASecondaryStrucutrePrinter printer = new RNASecondaryStrucutrePrinter();
+    private final RNASecondaryStructurePrinter printer = new RNASecondaryStructurePrinter();
 
     private ExtendedBPSEQExportController() {
     }
@@ -40,8 +40,8 @@ public class ExtendedBPSEQExportController {
     }
 
     public int exportForTool(TOOL tool, Path sharedDirectory,
-        RNASecondaryStrucutrePrinter.OutputFormat secondaryStrcutureFormat,
-        RNASecondaryStrucutrePrinter.OutputFormat extendendStructureFormat,
+        RNASecondaryStructurePrinter.OutputFormat secondaryStrcutureFormat,
+        RNASecondaryStructurePrinter.OutputFormat extendendStructureFormat,
         Map<String, String> supportSequences
     ) throws IOException {
         if (tool == null || sharedDirectory == null) return 0;
@@ -68,7 +68,7 @@ public class ExtendedBPSEQExportController {
                 ));
 
             if (secondaryStrcutureFormat != null) {
-                String content = printer.printBPSEQ(item.structure());
+                String content = printer.printCanonicalBPSEQ(item.structure());
                 String fileName = sanitize(item.baseName()) + item.suffix() + "_" + tool.getName() + ".bpseq.txt";
                 Path outputFile = outputDir.resolve(fileName);
                 Files.writeString(outputFile, content, StandardCharsets.UTF_8);

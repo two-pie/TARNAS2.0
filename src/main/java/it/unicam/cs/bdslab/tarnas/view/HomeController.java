@@ -5,7 +5,7 @@ import it.unicam.cs.bdslab.tarnas.controller.ExtendedBPSEQExportController;
 import it.unicam.cs.bdslab.tarnas.controller.IOController;
 import it.unicam.cs.bdslab.tarnas.models.StructureInfo;
 import it.unicam.cs.bdslab.tarnas.models.StructureStatus;
-import it.unicam.cs.bdslab.tarnas.parser.output.RNASecondaryStrucutrePrinter;
+import it.unicam.cs.bdslab.tarnas.parser.output.RNASecondaryStructurePrinter;
 import it.unicam.cs.bdslab.tarnas.view.utils.TOOL;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
@@ -97,10 +97,10 @@ public class HomeController {
     private CheckBox ck_consensus;
 
     @FXML
-    private ChoiceBox<RNASecondaryStrucutrePrinter.OutputFormat> select_outputSS;
+    private ChoiceBox<RNASecondaryStructurePrinter.OutputFormat> select_outputSS;
 
     @FXML
-    private ChoiceBox<RNASecondaryStrucutrePrinter.OutputFormat> select_outputESS;
+    private ChoiceBox<RNASecondaryStructurePrinter.OutputFormat> select_outputESS;
 
     private Map<TOOL, BooleanProperty> checkedItems = new HashMap<>();
     private boolean x3dnaAvailable = true;
@@ -182,13 +182,13 @@ public class HomeController {
         });
 
         select_outputSS.setItems(FXCollections.observableArrayList(
-                RNASecondaryStrucutrePrinter.OutputFormat.getNonExtendedFormats()));
+                RNASecondaryStructurePrinter.OutputFormat.getNonExtendedFormats()));
 
         select_outputESS.setItems(FXCollections.observableArrayList(
-                RNASecondaryStrucutrePrinter.OutputFormat.getExtendedFormats()));
+                RNASecondaryStructurePrinter.OutputFormat.getExtendedFormats()));
 
-        select_outputSS.setValue(RNASecondaryStrucutrePrinter.OutputFormat.BPSEQ);
-        select_outputESS.setValue(RNASecondaryStrucutrePrinter.OutputFormat.EXTENDED_BPSEQ);
+        select_outputSS.setValue(RNASecondaryStructurePrinter.OutputFormat.BPSEQ);
+        select_outputESS.setValue(RNASecondaryStructurePrinter.OutputFormat.EXTENDED_BPSEQ);
 
         logger.info("Initialization done");
     }
@@ -401,10 +401,10 @@ public class HomeController {
                             tool,
                             ioController.getSharedDirectory(),
                             ck_extractSS.isSelected()
-                                    ? RNASecondaryStrucutrePrinter.OutputFormat.BPSEQ
+                                    ? RNASecondaryStructurePrinter.OutputFormat.BPSEQ
                                     : null,
                             ck_extractESS.isSelected()
-                                    ? RNASecondaryStrucutrePrinter.OutputFormat.EXTENDED_BPSEQ
+                                    ? RNASecondaryStructurePrinter.OutputFormat.EXTENDED_BPSEQ
                                     : null,
                             supportSequences
                             );
